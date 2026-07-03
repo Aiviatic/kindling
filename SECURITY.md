@@ -53,8 +53,9 @@ The bootstrap entry points are plain, readable scripts in [`bootstrap/`](bootstr
 
 We are transparent about what is not yet hardened:
 
-- **Download integrity.** The provisioning steps download `nvm`, and portable
-  Node/Git, without SHA-256 / signature verification yet. Pinning and verifying
-  those checksums is the top hardening item.
+- **Download integrity.** The Windows portable-Node download is SHA-256-verified
+  against Node's published `SHASUMS256.txt` before it is extracted or run. Still
+  unverified: `nvm`'s install script (macOS/Linux) and portable Git — verifying
+  those is the remaining hardening item.
 
 If you spot something else, please tell us at **security@aiviatic.com**.

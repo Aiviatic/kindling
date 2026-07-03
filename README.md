@@ -17,7 +17,7 @@ Three layers, so the scary parts happen where they can be explained:
 
 1. **A per-OS bootstrap script** (`bootstrap/`) handles the steps that need Node
    present: it provisions a pinned Node.js (via `nvm` on macOS/Linux; on Windows it
-   reuses an existing Node 20+, and portable-Node provisioning is being validated),
+   downloads a pinned, SHA-256-verified portable Node, or reuses an existing Node 20+),
    then launches Kindling in the same shell.
    - macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/go | bash`
    - Windows: download `kindling.cmd` and double-click it (it fetches and runs
