@@ -1,0 +1,77 @@
+{
+  "name": "@aiviatic/kindling",
+  "version": "0.1.0",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aiviatic/kindling.git"
+  },
+  "type": "module",
+  "description": "Cross-platform GUI installer for the BMad + Claude Code stack.",
+  "license": "MIT",
+  "author": "Aiviatic",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/engine/index.js",
+  "types": "./dist/engine/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/engine/index.d.ts",
+      "import": "./dist/engine/index.js"
+    },
+    "./bootstrap/*": "./bootstrap/*"
+  },
+  "bin": {
+    "kindling": "bin/kindling.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "bootstrap/setup.sh",
+    "bootstrap/setup.ps1",
+    "bootstrap/kindling.cmd"
+  ],
+  "scripts": {
+    "build": "tsup && vite build",
+    "dev": "concurrently --names \"node,ui\" \"tsup --watch\" \"vite\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "gen:platform-codes": "node scripts/gen-platform-codes.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "axe-core": "^4.11.4",
+    "concurrently": "^10.0.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7",
+    "vitest-axe": "^0.1.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.1"
+  }
+}

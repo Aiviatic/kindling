@@ -1,0 +1,17 @@
+# Normalize line endings. Windows is a first-class target, so pin LF for all code/text and
+# normalize on checkout to avoid noisy cross-platform diffs and tool inconsistencies.
+* text=auto eol=lf
+
+# Windows-native scripts must keep CRLF (arrive in Epic 2's bootstrap layer).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets — never normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

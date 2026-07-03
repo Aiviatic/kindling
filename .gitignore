@@ -1,0 +1,40 @@
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+npm-debug.log*
+
+# Kindling runtime (local failure logs, provisioned runtimes)
+.kindling/
+
+# Build artifacts (per-OS bootstrap binaries / signed installers)
+build/
+release/
+*.exe
+*.dmg
+*.pkg
+*.deb
+*.rpm
+!build/.gitkeep
+
+# Scratch / sandbox project scaffolds created during Kindling dev
+sandbox/
+scratch/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# Cloudflare local dev secrets (wrangler pages dev reads .dev.vars)
+.dev.vars
+
+# BMad workflow / story automator runtime state
+.claude/.story-automator-active
+.claude/settings.json
+.claude/skills/**/__pycache__/
+_bmad-output/story-automator/

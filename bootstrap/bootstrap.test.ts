@@ -1,0 +1,90 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { pins } from '../engine/pins';
+import { NVM_VERSION } from '../engine/provision/node-unix';
+import { npxCliPath } from '../engine/orchestrate/launch';
+
+// The bootstrap scripts are shell artifacts validated for real at the dress rehearsal; here we
+// assert their CONTENT (the AC-required flags/flow/guidance) and — critically — that the pinned
+// versions embedded in shell match the engine SSOT, so they can't silently drift.
+const read = (rel: string): string =>
+  readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+
+const setupSh = read('./setup.sh');
+const setupPs1 = read('./setup.ps1');
+const kindlingCmd = read('./kindling.cmd');
+
+describe('bootstrap/kindling.cmd (Windows entry — AC2)', () => {
+  it('is a self-fetching one-file entry: fetches setup.ps1 over HTTPS and runs it (irm | iex)', () => {
+    expect(kindlingCmd).toMatch(/powershell/i);
+    expect(kindlingCmd).toContain('-ExecutionPolicy Bypass');
+    expect(kindlingCmd).toContain('-NoProfile'); // mandatory guard
+    // Self-fetching (mirrors mac's `curl … | bash`): no sibling files travel with the download.
+    expect(kindlingCmd).toMatch(/irm\s+https:\/\/\S*setup\.ps1\s*\|\s*iex/i);
+    // Assert on the COMMAND, not the REM comments (which mention the old `%~dp0`/`-File` form).
+    const cmdCode = kindlingCmd.split('\n').filter((l) => !/^\s*REM\b/i.test(l)).join('\n');
+    expect(cmdCode).not.toContain('%~dp0'); // no dependence on files next to the downloaded .cmd
+    expect(cmdCode).not.toMatch(/-File\b/); // uses -Command … iex, not -File <sibling>
+  });
+});
+
+describe('bootstrap/setup.sh (macOS/Linux entry — AC1)', () => {
+  it('is a safe bash script that provisions then launches Kindling', () => {
+    expect(setupSh.startsWith('#!/usr/bin/env bash')).toBe(true);
+    expect(setupSh).toContain('set -euo pipefail');
+    // Self-contained for the curl|bash delivery path (no sourcing — BASH_SOURCE is empty there).
+    expect(setupSh).toMatch(/node_ok\(\)/);
+    expect(setupSh).toMatch(/have_cmd\(\)/);
+    expect(setupSh).not.toContain('lib/common.sh');
+    expect(setupSh).toMatch(/set \+u/); // suspends set -u around sourcing nvm.sh
+    expect(setupSh).toMatch(/nvm install/); // provisions Node via nvm
+    expect(setupSh).toMatch(/npx -y "@aiviatic\/kindling@/); // launches Kindling
+  });
+
+  it('does NOT provision Git — that moved to the engine/browser (Option C)', () => {
+    expect(setupSh).not.toMatch(/xcode-select/);
+    expect(setupSh).not.toMatch(/apt-get/);
+  });
+});
+
+describe('bootstrap/setup.ps1 (Windows — AC3 guidance)', () => {
+  it('explains SmartScreen + exec-policy as expected/safe/reversible', () => {
+    expect(setupPs1).toMatch(/SmartScreen/);
+    expect(setupPs1).toMatch(/Run anyway/);
+    expect(setupPs1).toMatch(/reversible/i);
+    expect(setupPs1).toMatch(/npx -y "@aiviatic\/kindling@/); // launches Kindling
+  });
+
+  it('launches via the absolute provisioned node when portable (clean-runtime, 2.6)', () => {
+    expect(setupPs1).toMatch(/\$NodeExe/);
+    expect(setupPs1).toMatch(/\$LASTEXITCODE -ne 0/); // native-exit failure handling
+    // Parity guard: the PS npx-cli layout must match the TS composer's npxCliPath (no drift).
+    const tail = npxCliPath('X/node.exe').split(/[\\/]/).slice(1).join('\\'); // node_modules\npm\bin\npx-cli.js
+    expect(setupPs1).toContain(tail);
+  });
+
+  it('is self-contained for the `irm | iex` delivery — helpers inlined, no on-disk dot-source', () => {
+    // Run via `irm … | iex`, setup.ps1 is NOT a file on disk, so there is no $PSScriptRoot and it
+    // cannot dot-source a sibling. The helpers must be inlined (mirrors setup.sh's inline helpers).
+    // Assert on the CODE, not the `#` comments (which mention $PSScriptRoot/lib to explain the change).
+    const ps1Code = setupPs1.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    expect(ps1Code).not.toContain('$PSScriptRoot'); // no dot-source of a sibling
+    expect(ps1Code).not.toMatch(/lib[\\/]common\.ps1/);
+    expect(setupPs1).toMatch(/function Say/); // helpers inlined (defined in this file)
+    expect(setupPs1).toMatch(/function Test-NodeOk/); // the inlined helper the flow calls
+  });
+});
+
+describe('pinned versions match the engine SSOT (no drift)', () => {
+  it('setup.sh embeds pins.node, pins.kindling, and the nvm version', () => {
+    expect(setupSh).toContain(`KINDLING_NODE_VERSION="${pins.node}"`);
+    expect(setupSh).toContain(`KINDLING_VERSION="${pins.kindling}"`);
+    expect(setupSh).toContain(`NVM_VERSION="${NVM_VERSION}"`);
+  });
+
+  it('setup.ps1 embeds pins.node + pins.kindling', () => {
+    expect(setupPs1).toContain(`$KindlingNodeVersion = '${pins.node}'`);
+    expect(setupPs1).toContain(`$KindlingVersion     = '${pins.kindling}'`);
+  });
+});

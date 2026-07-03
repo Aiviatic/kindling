@@ -1,0 +1,54 @@
+# GENERATED — do not edit by hand. Regenerate on every pins.bmad bump:
+#   npm run gen:platform-codes
+#
+# IDE / tool catalog for Kindling's IDE Picker (Story 3.4).
+# SOURCE OF TRUTH: the `id` values are the exact `--tools` IDs accepted by
+# `bmad-method@6.9.0 install`, captured verbatim from `install --list-tools`. A wrong id
+# fails the install, so this file is DERIVED from the pin (engine/pins.ts), never hand-listed.
+# `recommended: true` marks the IDs BMad stars (*). The UI shows recommended first; the rest
+# are reachable via "show all". If missing/unreadable, the UI falls back to a built-in list.
+ides:
+  - { id: claude-code, name: "Claude Code", recommended: true }
+  - { id: codex, name: "Codex", recommended: true }
+  - { id: cursor, name: "Cursor", recommended: true }
+  - { id: github-copilot, name: "GitHub Copilot", recommended: true }
+  - { id: adal, name: "AdaL" }
+  - { id: auggie, name: "Auggie" }
+  - { id: goose, name: "Block Goose" }
+  - { id: cline, name: "Cline" }
+  - { id: codebuddy, name: "CodeBuddy" }
+  - { id: codewhale, name: "CodeWhale" }
+  - { id: command-code, name: "Command Code" }
+  - { id: crush, name: "Crush" }
+  - { id: droid, name: "Factory Droid" }
+  - { id: firebender, name: "Firebender" }
+  - { id: gemini, name: "Gemini CLI" }
+  - { id: antigravity, name: "Google Antigravity" }
+  - { id: hermes, name: "Hermes Agent" }
+  - { id: bob, name: "IBM Bob" }
+  - { id: iflow, name: "iFlow" }
+  - { id: junie, name: "Junie" }
+  - { id: kilo, name: "KiloCoder" }
+  - { id: kimi-code, name: "Kimi Code" }
+  - { id: kiro, name: "Kiro" }
+  - { id: kode, name: "Kode" }
+  - { id: mistral-vibe, name: "Mistral Vibe" }
+  - { id: mux, name: "Mux" }
+  - { id: neovate, name: "Neovate" }
+  - { id: ona, name: "Ona" }
+  - { id: openclaw, name: "OpenClaw" }
+  - { id: opencode, name: "OpenCode" }
+  - { id: openhands, name: "OpenHands" }
+  - { id: pi, name: "Pi" }
+  - { id: pochi, name: "Pochi" }
+  - { id: qoder, name: "Qoder" }
+  - { id: qwen, name: "QwenCoder" }
+  - { id: replit, name: "Replit Agent" }
+  - { id: roo, name: "Roo Code" }
+  - { id: rovo-dev, name: "Rovo Dev" }
+  - { id: cortex, name: "Snowflake Cortex Code" }
+  - { id: amp, name: "Sourcegraph Amp" }
+  - { id: trae, name: "Trae" }
+  - { id: warp, name: "Warp" }
+  - { id: windsurf, name: "Windsurf" }
+  - { id: zencoder, name: "Zencoder" }

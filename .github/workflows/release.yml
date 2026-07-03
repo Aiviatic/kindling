@@ -1,0 +1,12 @@
+# Release pipeline — STUB ONLY. Publishing to npm is wired in a later story, once the
+# Kindling package name is claimed and the pin strategy is in place. Do not enable yet.
+name: Release (stub)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Release pipeline is a stub. npm publish is wired in a later story."
