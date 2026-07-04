@@ -40,7 +40,7 @@ Three layers, so the scary parts happen where they can be explained:
    a pinned, SHA-256-verified portable Node, or reuses an existing Node 20+). On
    Windows it also provisions a pinned, SHA-256-verified portable Git (MinGit) if
    Git is missing. It then launches Kindling in the same shell.
-   - macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/go | bash`
+   - macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/install | bash`
    - Windows: download `kindling.cmd` and double-click it (it fetches and runs
      `setup.ps1` over HTTPS).
 2. **A temporary localhost server** (`server/`) stands up on `127.0.0.1`, serves a

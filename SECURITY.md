@@ -29,7 +29,7 @@ machine, Kindling:
 
 The bootstrap entry points are plain, readable scripts in [`bootstrap/`](bootstrap/):
 
-- macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/go | bash` runs
+- macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/install | bash` runs
   [`bootstrap/setup.sh`](bootstrap/setup.sh).
 - Windows: a one-file `kindling.cmd` that fetches and runs
   [`bootstrap/setup.ps1`](bootstrap/setup.ps1) over HTTPS
