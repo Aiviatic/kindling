@@ -73,12 +73,38 @@ if (Test-NodeOk $NodeFloorMajor) {
   Say "Node is ready."
 }
 
-# --- Git (portable) -----------------------------------------------------------
+# --- Git (pinned, portable MinGit) -------------------------------------------
+# $GitCmdDir stays $null when a system Git is reused (already on PATH); the portable path sets it to
+# MinGit's cmd\ dir, prepended to PATH at launch so the engine can `git init` the new project.
+$GitCmdDir = $null
 if (Test-Cmd 'git') {
   Say "Git is already installed - reusing it."
 } else {
-  Say "Setting up Git - it keeps the history of your project."
-  # PortableGit download/extract — deferred (needs pinned version + release URL); resolved at rehearsal.
+  Say "Setting up Git - it keeps the history of your project. This downloads about 35 MB, one time."
+  # Portable MinGit (the ZIP build made for bundling): download the pinned release, VERIFY its SHA-256
+  # before touching it, extract, and expose cmd\ on PATH. Mirrors the Node block. Pinned version +
+  # hash below MUST be bumped together (git-for-windows publishes the digest on each release asset).
+  $ProgressPreference = 'SilentlyContinue'
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  $gitVersion = '2.55.0.2'
+  $gitRoot = Join-Path $env:LOCALAPPDATA 'kindling\git'
+  $gitZip  = Join-Path $env:LOCALAPPDATA 'kindling\mingit.zip'
+  $gitUrl  = "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.2/MinGit-$gitVersion-64-bit.zip"
+  $gitSha  = 'e3ea2944cea4b3fabcd69c7c1669ef69b1b66c05ac7806d81224d0abad2dec31'
+  New-Item -ItemType Directory -Force -Path $gitRoot | Out-Null
+  try {
+    Invoke-WebRequest -Uri $gitUrl -OutFile $gitZip -UseBasicParsing
+    $actual = (Get-FileHash -Path $gitZip -Algorithm SHA256).Hash.ToLower()
+    if ($actual -ne $gitSha) {
+      throw "downloaded Git failed its integrity check (expected '$gitSha', got '$actual')"
+    }
+    Expand-Archive -Path $gitZip -DestinationPath $gitRoot -Force
+  } catch {
+    throw "Couldn't set up Git ($($_.Exception.Message)). Check your internet connection, then run this again - it's safe to re-run."
+  }
+  $GitCmdDir = Join-Path $gitRoot 'cmd'
+  if (-not (Test-Path (Join-Path $GitCmdDir 'git.exe'))) { throw "Git was downloaded but git.exe wasn't found at $GitCmdDir." }
+  Say "Git is ready."
 }
 
 # --- Launch Kindling (clean-runtime: absolute node when portable, else npx on PATH) -----------
@@ -91,6 +117,9 @@ Say "Starting Kindling..."
 $launchDir = Join-Path $env:LOCALAPPDATA 'kindling'
 New-Item -ItemType Directory -Force -Path $launchDir | Out-Null
 Set-Location -LiteralPath $launchDir
+# Portable Git on PATH (the engine spawns `git` by name to scaffold the project's history). Applies
+# to both launch branches; the provisioned Node dir is added inside the portable-Node branch below.
+if ($GitCmdDir) { $env:Path = "$GitCmdDir;$env:Path" }
 if ($null -eq $NodeExe) {
   & npx -y "@aiviatic/kindling@$KindlingVersion"
 } else {
