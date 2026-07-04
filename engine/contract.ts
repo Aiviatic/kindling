@@ -100,7 +100,7 @@ export interface Config {
   /**
    * Which project method to install (see engine/method/registry.ts). Absent ⇒ `'bmad'`, the
    * recommended default. A pluggable seam so BMad can become optional (a "none" provider) and
-   * gain alternatives without changing the engine — see docs/method-provider-design.md.
+   * gain alternatives without changing the engine — see docs/install-architecture-design.md.
    */
   method?: string;
   /**

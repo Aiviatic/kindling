@@ -1,13 +1,25 @@
-# Method providers: making BMad optional
+# Install architecture: method providers + a system/project split
 
-**Status:** proposal · **Target:** a future iteration · **Scope:** the installer engine + UI
+**Status:** proposal (phase 1 shipped) · **Target:** a future iteration · **Scope:** the installer engine + UI
 
-Today Kindling always installs [BMad](https://docs.bmad-method.org/). This document
-sketches how to make the method a pluggable choice — BMad by default, a "no framework"
-option, and room for vetted alternatives later — without regressing the "sensible
-defaults, one-click Start" experience.
+Two related restructurings of what Kindling calls "the install":
 
-## Goal
+1. **Method providers** — make the method (BMad) a pluggable choice: BMad by default, a
+   "No framework" option, and room for vetted alternatives, without regressing the "sensible
+   defaults, one-click Start" experience.
+2. **A system/project split** — group the work by *what it touches*: machine-wide "system"
+   installs (Node, Git, the AI-tool CLIs) vs "project" installs (the folder, the method,
+   the tools config). The two are conflated today, and one step (the global agent-CLI
+   install) sits in the wrong bucket.
+
+The two reinforce each other: the project section *is* the method provider's domain, so a
+"No framework" method simply makes the project section thinner.
+
+**Phase 1 is done** (see the phasing section): `StepId.InstallBmad` was renamed to
+`install.method`, and the BMad install was extracted behind a `MethodProvider` seam
+(`engine/method/`) with no behavior change. The rest of this document is the remaining design.
+
+## Method providers — goal
 
 Turn "the BMad installer" into "the AI-dev setup tool that installs BMad by default."
 Concretely:
@@ -26,12 +38,12 @@ affordance; the default flow still lands on BMad and Starts in one click.
 The engine runs a fixed step array (`engine/engine.ts`):
 
 ```
-provision.node → provision.git → scaffold.git-init → install.bmad → install.agent-cli → finalize.self-check
+provision.node → provision.git → scaffold.git-init → install.method → install.agent-cli → finalize.self-check
 ```
 
-BMad specifically is wired into:
+(`install.method` was `install.bmad` before phase 1.) BMad specifically is wired into:
 
-- **`install.bmad` step** — `runBmadInstall()` (`engine/orchestrate/bmad-install.ts`) →
+- **`install.method` step** — `runBmadInstall()` (`engine/orchestrate/bmad-install.ts`) →
   `composeInstallArgs()` (`engine/orchestrate/flags.ts`) → `npx bmad-method@<pins.bmad>` with
   `--modules/--tools`.
 - **`Config`** (`engine/contract.ts`) — `modules[]` (BMad modules), `bmadTarget: 'pinned'|'latest'`,
@@ -180,15 +192,67 @@ truly BMad-optional install, promote the committed `platform-codes.yaml` to the 
 "auto-discovers new IDEs BMad adds" and maintain the list ourselves — acceptable, and it removes a
 hard BMad dependency from the tools picker.
 
+## The system/project install split
+
+Today the steps are ordered by accident of dependency, not by scope. Sorted by *what they
+touch*:
+
+| Scope | Steps | Character |
+| --- | --- | --- |
+| **System** (machine-wide) | `provision.node`, `provision.git`, `install.agent-cli` | install once, skip if present, may need elevation; persist beyond any project |
+| **Project** (in the folder) | `scaffold.git-init`, `install.method` | per project; re-run for each new project |
+| Finalize | `finalize.self-check` | reports on both |
+
+The instinct behind the split is right, and it's *almost* latent already — except
+**`install.agent-cli` is the outlier**: it's a global `npm install -g` (system-scoped) sitting in
+the middle of the project work. That's the one thing the split really fixes.
+
+### What changes
+
+- **Phase taxonomy.** Rework the `Phase` enum (`engine/contract.ts`) so steps carry a scope the UI
+  can group on — e.g. `System` and `Project` (keep `Finalize` as its own tail, or fold it into the
+  project section as a final "check"). `Phase` is on every `KindlingEvent`, so this ripples through
+  the reducer and Progress and their tests — about the size of the `install.method` rename.
+- **The one behavior change: reorder `install.agent-cli`.** For clean, contiguous sections the
+  global CLI install should run *with* Node/Git (before scaffold), not after the method. It is safe
+  to move — the CLI install doesn't depend on the project existing, and the self-check re-probes CLI
+  presence, so the Welcome guidance is unaffected. This is the only decision here that is not just a
+  relabel (see open questions).
+- **Progress UI** (`ui/screens/Progress.tsx`): today a flat `steps.map` with one bar. Render two
+  labelled sections — "Getting your computer ready" (system) then "Setting up your project"
+  (project) — with a decision on whether each section gets its own bar or they share one.
+- **Configure UI**: optionally mirror the grouping — the AI-tool CLI opt-in ("run your assistant
+  right away") reads as *system* setup, while the method + modules read as *project* setup.
+
+### Why it's worth it
+
+- **User clarity.** The scary/slow machine work (Xcode CLT, global npm) is visibly one phase, and
+  it matches the real distinction a person cares about: "what are you putting on my computer" vs
+  "what are you setting up for this project".
+- **Honest re-run semantics.** The system section is skip-if-present (already true per step); the
+  project section is what re-runs for a second project. Two sections make "your computer's already
+  set up, we're just making the new project" expressible.
+- **It reinforces the method seam.** The project section *is* the provider's domain — a "No
+  framework" method just makes it thinner (scaffold, no method install).
+
+Keep it to two sections of a few steps each; don't let a 6-step flow grow ceremony.
+
 ## Phasing
 
-1. **Refactor only, zero behavior change.** Extract `BmadProvider`, add the registry with just
-   `{ bmad }`, route the engine through it, and do the `install.method` rename. Success criterion:
-   the full test suite green and install output byte-identical. This is the spine.
-2. **Add the bare option.** `NoneProvider` + the collapsed method selector + the nullable
-   `ValidationSummary.method`. Decouple the tools catalog (above). Ship — BMad is now optional.
-3. **Add one vetted alternative.** Implement the interface + tests for a single method (e.g. Spec
+1. **DONE — the method seam (zero behavior change).** Extracted `BmadProvider`, added the registry
+   with just `{ bmad }`, routed the engine through it via an injectable `installMethod` dep, and did
+   the `install.method` rename. Full suite green, install output byte-identical.
+2. **The system/project split.** Rework the `Phase` taxonomy into system/project scopes, reorder the
+   agent-CLI install into the system section, and render Progress as two labelled sections. Mostly
+   relabel + one deliberate reorder; no new methods yet. Good to pair with — or do just before —
+   phase 3, so the project section is clearly labelled when the "No framework" option lands in it.
+3. **Add the bare option.** `NoneProvider` + the collapsed method selector + the nullable
+   `ValidationSummary.method`. Decouple the tools catalog (above). Ship — BMad is now optional, and
+   the project section visibly shrinks when "No framework" is chosen.
+4. **Add one vetted alternative.** Implement the interface + tests for a single method (e.g. Spec
    Kit) — no engine surgery. Repeat per method.
+
+Phases 2–4 are all user-visible, so each wants its own version bump + `npm publish` + site redeploy.
 
 ## Open questions / risks
 
@@ -197,5 +261,10 @@ hard BMad dependency from the tools picker.
   (easy); interactive wizards don't fit without work. Vet each candidate's CLI before committing.
 - **Keep the method choice out of the default flow** — collapsed/advanced only, so a non-technical
   user never has to know it exists.
+- **Agent-CLI ordering (the split's one real decision).** Moving the global CLI install into the
+  system section, before scaffold, front-loads a slow `npm -g` before the reassuring "your project
+  is created" moment. Options: (a) system section fully first and accept the wait — cleanest scope
+  story; (b) keep the CLI install last but label it as system in the UI — preserves the early
+  "project created" beat at the cost of non-contiguous sections. Leaning (a); decide before building.
 - **`bmadTarget`/`--action update` semantics** are BMad-specific; they live in the provider, not the
   generic step.

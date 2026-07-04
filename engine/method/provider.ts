@@ -4,7 +4,7 @@ import type { Config } from '../contract';
 
 // A pluggable project "method" (BMad today; a bare "none" and alternatives later). The engine's
 // install step drives whichever provider the config selects, so BMad is no longer hardwired.
-// See docs/method-provider-design.md. Phase 1 defines only what the install step needs; the
+// See docs/install-architecture-design.md. Phase 1 defines only what the install step needs; the
 // Welcome/-inspect surface (detectExisting/summaryFacts/welcomeGuidance) is a later phase.
 
 export interface MethodContext {
