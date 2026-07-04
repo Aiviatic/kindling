@@ -171,7 +171,7 @@ describe('Engine orchestration', () => {
     const result = await engine.start();
 
     expect(result.ok).toBe(false);
-    expect(result.failedStep).toBe(StepId.InstallBmad);
+    expect(result.failedStep).toBe(StepId.InstallMethod);
     expect(d.writeFailureLog).toHaveBeenCalledOnce();
     expect(d.runSelfCheck).not.toHaveBeenCalled(); // later step skipped
   });
@@ -188,10 +188,10 @@ describe('Engine orchestration', () => {
 
     const first = await engine.start();
     expect(first.ok).toBe(false);
-    expect(first.failedStep).toBe(StepId.InstallBmad);
+    expect(first.failedStep).toBe(StepId.InstallMethod);
     expect(scaffold).toHaveBeenCalledOnce();
 
-    const retried = await engine.retry(StepId.InstallBmad);
+    const retried = await engine.retry(StepId.InstallMethod);
     expect(retried.ok).toBe(true);
     expect(retried.summary?.success).toBe(true);
     expect(scaffold).toHaveBeenCalledOnce(); // NOT re-run (already completed)
@@ -350,7 +350,7 @@ describe('Engine orchestration', () => {
       opts.emitter.emit({
         id: 'x',
         phase: Phase.Install,
-        step: StepId.InstallBmad,
+        step: StepId.InstallMethod,
         status: Status.Failed,
         humanMessage: 'install failed',
         level: 'error',
@@ -369,7 +369,7 @@ describe('Engine orchestration', () => {
     );
     await engine.start();
 
-    expect(captured?.step).toBe(StepId.InstallBmad);
+    expect(captured?.step).toBe(StepId.InstallMethod);
     expect(captured?.events.some((e) => e.status === Status.Failed)).toBe(true);
   });
 });

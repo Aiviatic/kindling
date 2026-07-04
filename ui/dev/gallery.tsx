@@ -51,7 +51,7 @@ const progressFrames = [
   ev({ step: StepId.ProvisionNode, status: Status.Done, humanMessage: 'Node.js is ready.' }),
   ev({ step: StepId.ProvisionGit, status: Status.Done, humanMessage: 'Git is ready.' }),
   ev({ step: StepId.ScaffoldGitInit, status: Status.Done, humanMessage: 'Created your project and made the first commit.' }),
-  ev({ step: StepId.InstallBmad, status: Status.Working, pct: 60, humanMessage: 'Installing BMad into your project…' }),
+  ev({ step: StepId.InstallMethod, status: Status.Working, pct: 60, humanMessage: 'Installing BMad into your project…' }),
   ev({ step: StepId.InstallAgentCli, status: Status.Queued, humanMessage: 'Next: install the Claude Code CLI.' }),
   ev({ step: StepId.FinalizeSelfCheck, status: Status.Queued, humanMessage: 'Next: check everything over.' }),
 ];

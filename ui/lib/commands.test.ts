@@ -48,10 +48,10 @@ describe('createCommands', () => {
 
   it('POSTs /retry with the step in the body', async () => {
     const { calls, fetch } = recorder();
-    await createCommands({ fetch }).retry(StepId.InstallBmad);
+    await createCommands({ fetch }).retry(StepId.InstallMethod);
     expect(calls[0].url).toBe('/retry');
     expect(calls[0].headers['X-Kindling']).toBe('1');
-    expect(JSON.parse(calls[0].body!)).toEqual({ step: StepId.InstallBmad });
+    expect(JSON.parse(calls[0].body!)).toEqual({ step: StepId.InstallMethod });
   });
 
   it('POSTs /quit with no body', async () => {

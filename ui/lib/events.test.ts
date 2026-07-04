@@ -21,7 +21,7 @@ class FakeEventSource implements EventSourceLike {
 const sample: KindlingEvent = {
   id: 'e1',
   phase: Phase.Install,
-  step: StepId.InstallBmad,
+  step: StepId.InstallMethod,
   status: Status.Working,
   pct: 25,
   humanMessage: 'Installing BMad…',

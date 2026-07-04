@@ -27,15 +27,15 @@ describe('reduce — event stream → UI state', () => {
       ev({ step: StepId.ProvisionNode, status: Status.Queued, phase: Phase.Provision }),
       ev({ step: StepId.ProvisionNode, status: Status.Working, phase: Phase.Provision, pct: 50 }),
       ev({ step: StepId.ProvisionNode, status: Status.Done, phase: Phase.Provision }),
-      ev({ step: StepId.InstallBmad, status: Status.Working, phase: Phase.Install, pct: 40 }),
-      ev({ step: StepId.InstallBmad, status: Status.Done, phase: Phase.Install }),
+      ev({ step: StepId.InstallMethod, status: Status.Working, phase: Phase.Install, pct: 40 }),
+      ev({ step: StepId.InstallMethod, status: Status.Done, phase: Phase.Install }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done, phase: Phase.Finalize, humanMessage: "You're ready" }),
     ]);
 
     // First-seen order preserved; one row per step (upsert, not append).
     expect(state.steps.map((s) => s.id)).toEqual([
       StepId.ProvisionNode,
-      StepId.InstallBmad,
+      StepId.InstallMethod,
       StepId.FinalizeSelfCheck,
     ]);
     expect(state.steps[0].status).toBe(Status.Done);
@@ -49,7 +49,7 @@ describe('reduce — event stream → UI state', () => {
   it('carries summaryJson from the success event (drives the Welcome copy action)', () => {
     const summary = '{"schemaVersion":3,"success":true}';
     const state = fold([
-      ev({ step: StepId.InstallBmad, status: Status.Done }),
+      ev({ step: StepId.InstallMethod, status: Status.Done }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done, summaryJson: summary }),
     ]);
     expect(state.summaryJson).toBe(summary);
@@ -58,7 +58,7 @@ describe('reduce — event stream → UI state', () => {
 
   it('copies pct from the event and never invents its own', () => {
     const state = fold([
-      ev({ step: StepId.InstallBmad, status: Status.Working, pct: 73 }),
+      ev({ step: StepId.InstallMethod, status: Status.Working, pct: 73 }),
     ]);
     expect(state.steps[0].pct).toBe(73);
     expect(state.overall).toBe('running');
@@ -67,11 +67,11 @@ describe('reduce — event stream → UI state', () => {
   it('a Failed event makes overall "failed" and records the failure; it stays failed', () => {
     const state = fold([
       ev({ step: StepId.ProvisionNode, status: Status.Done }),
-      ev({ step: StepId.InstallBmad, status: Status.Failed, humanMessage: 'install blew up' }),
+      ev({ step: StepId.InstallMethod, status: Status.Failed, humanMessage: 'install blew up' }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done }), // a later done must not clear it
     ]);
     expect(state.overall).toBe('failed');
-    expect(state.failure).toEqual({ step: StepId.InstallBmad, message: 'install blew up' });
+    expect(state.failure).toEqual({ step: StepId.InstallMethod, message: 'install blew up' });
   });
 
   it('carries the failure errorCode into state.failure (drives 3.6 recovery guidance)', () => {
@@ -92,7 +92,7 @@ describe('reduce — event stream → UI state', () => {
 
   it('AC-8: a NON-fatal agent-CLI Failed does not fail the run; self-check Done → success', () => {
     const state = fold([
-      ev({ step: StepId.InstallBmad, status: Status.Done }),
+      ev({ step: StepId.InstallMethod, status: Status.Done }),
       ev({ step: StepId.InstallAgentCli, status: Status.Failed, humanMessage: 'cli install failed' }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done }),
     ]);
@@ -112,7 +112,7 @@ describe('reduce — event stream → UI state', () => {
 
   it('AC-8: the marker does not over-reach — a FATAL step Failed still fails the run', () => {
     const state = fold([
-      ev({ step: StepId.InstallBmad, status: Status.Failed, humanMessage: 'bmad install failed' }),
+      ev({ step: StepId.InstallMethod, status: Status.Failed, humanMessage: 'bmad install failed' }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done }),
     ]);
     expect(state.overall).toBe('failed');
@@ -126,7 +126,7 @@ describe('reduce — event stream → UI state', () => {
   it('AC-8: a non-fatal Failed AND a fatal Failed together still fails the run', () => {
     const state = fold([
       ev({ step: StepId.InstallAgentCli, status: Status.Failed, humanMessage: 'cli install failed' }),
-      ev({ step: StepId.InstallBmad, status: Status.Failed, humanMessage: 'bmad install failed' }),
+      ev({ step: StepId.InstallMethod, status: Status.Failed, humanMessage: 'bmad install failed' }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done }),
     ]);
     expect(state.overall).toBe('failed'); // the fatal one still wins
@@ -143,10 +143,10 @@ describe('reduce — event stream → UI state', () => {
 
   it('clears the failure when the failed step recovers on retry (drives 3.6 off the error screen)', () => {
     const state = fold([
-      ev({ step: StepId.InstallBmad, status: Status.Failed, humanMessage: 'install blew up' }),
+      ev({ step: StepId.InstallMethod, status: Status.Failed, humanMessage: 'install blew up' }),
       // Retry re-runs the same step:
-      ev({ step: StepId.InstallBmad, status: Status.Working, pct: 10 }),
-      ev({ step: StepId.InstallBmad, status: Status.Done }),
+      ev({ step: StepId.InstallMethod, status: Status.Working, pct: 10 }),
+      ev({ step: StepId.InstallMethod, status: Status.Done }),
       ev({ step: StepId.FinalizeSelfCheck, status: Status.Done }),
     ]);
     expect(state.failure).toBeUndefined();
@@ -154,7 +154,7 @@ describe('reduce — event stream → UI state', () => {
   });
 
   it('is idempotent on event id — a replayed backlog (SSE reconnect) is applied exactly once', () => {
-    const e = ev({ step: StepId.InstallBmad, status: Status.Working, pct: 30 });
+    const e = ev({ step: StepId.InstallMethod, status: Status.Working, pct: 30 });
     const once = reduce(initialState, e);
     const twice = reduce(once, e); // same id re-delivered after a reconnect
     expect(twice).toBe(once); // unchanged reference — duplicate ignored

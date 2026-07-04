@@ -41,7 +41,7 @@ describe('runBmadInstall', () => {
     expect(args).not.toContain('--action'); // fresh project (default detect → false)
     expect(result).toEqual({ ok: true, bmadVersion: '6.1.2' });
     expect(events.map((e) => e.status)).toEqual([Status.Working, Status.Done]);
-    expect(events.every((e) => e.step === StepId.InstallBmad)).toBe(true);
+    expect(events.every((e) => e.step === StepId.InstallMethod)).toBe(true);
   });
 
   it('re-run on an already-installed project uses --action update (2.7 idempotency)', async () => {

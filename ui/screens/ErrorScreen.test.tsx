@@ -60,7 +60,7 @@ describe('<ErrorScreen>', () => {
   });
 
   it('is announced assertively (role="alert")', () => {
-    renderError(failEvent(StepId.InstallBmad, 'boom', ErrorCode.ExecFailed));
+    renderError(failEvent(StepId.InstallMethod, 'boom', ErrorCode.ExecFailed));
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
@@ -78,13 +78,13 @@ describe('<ErrorScreen>', () => {
 
   it('offers Retry for a generic failure (Flow re-runs the failed step)', () => {
     const onRetry = vi.fn();
-    renderError(failEvent(StepId.InstallBmad, 'boom', ErrorCode.ExecFailed), { onRetry });
+    renderError(failEvent(StepId.InstallMethod, 'boom', ErrorCode.ExecFailed), { onRetry });
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it('renders the dedicated BMad-install-failure guidance', () => {
-    renderError(failEvent(StepId.InstallBmad, 'exit 1', ErrorCode.BmadInstallFailed));
+    renderError(failEvent(StepId.InstallMethod, 'exit 1', ErrorCode.BmadInstallFailed));
     expect(screen.getByRole('heading', { name: /BMad didn’t install/ })).toBeInTheDocument();
   });
 
@@ -99,7 +99,7 @@ describe('<ErrorScreen>', () => {
   });
 
   it('announces a transport-level retry failure assertively (role="alert")', () => {
-    renderError(failEvent(StepId.InstallBmad, 'boom', ErrorCode.ExecFailed), {
+    renderError(failEvent(StepId.InstallMethod, 'boom', ErrorCode.ExecFailed), {
       retryError: 'We couldn’t reach Kindling.',
     });
     // Both the screen section and the retry-error paragraph carry role="alert".
@@ -108,7 +108,7 @@ describe('<ErrorScreen>', () => {
   });
 
   it('falls back to the engine message when the failure carries no code', () => {
-    renderError(failEvent(StepId.InstallBmad, 'A specific engine-authored failure message.'));
+    renderError(failEvent(StepId.InstallMethod, 'A specific engine-authored failure message.'));
     // Appears as the headline detail (and again in the step-context row) — the engine's words, not ours.
     expect(
       screen.getAllByText('A specific engine-authored failure message.').length,

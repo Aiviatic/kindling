@@ -193,8 +193,8 @@ describe('startServer', () => {
   it('POST /retry passes the step; missing step → 400', async () => {
     const commands = fakeCommands();
     running = await startServer({ emitter: new EngineEmitter(), commands });
-    expect(await post(running.url, '/retry', { step: StepId.InstallBmad })).toBe(202);
-    expect(commands.retry).toHaveBeenCalledWith(StepId.InstallBmad);
+    expect(await post(running.url, '/retry', { step: StepId.InstallMethod })).toBe(202);
+    expect(commands.retry).toHaveBeenCalledWith(StepId.InstallMethod);
     expect(await post(running.url, '/retry', {})).toBe(400); // missing step
     expect(await post(running.url, '/retry', { step: 'not.a-real-step' })).toBe(400); // unknown step
   });

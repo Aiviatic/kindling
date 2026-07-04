@@ -86,7 +86,7 @@ export async function runBmadInstall(opts: BmadInstallOptions): Promise<BmadInst
     opts.emitter.emit({
       id: randomUUID(),
       phase: Phase.Install,
-      step: StepId.InstallBmad,
+      step: StepId.InstallMethod,
       status,
       humanMessage,
       level,
@@ -95,7 +95,7 @@ export async function runBmadInstall(opts: BmadInstallOptions): Promise<BmadInst
     });
   };
 
-  emit(Status.Working, stepMessages[StepId.InstallBmad]);
+  emit(Status.Working, stepMessages[StepId.InstallMethod]);
 
   // Fail fast with a clear message if the cohort BMad version was never frozen (don't ship a
   // cryptic `npx bmad-method@0.0.0-TODO` 404). Pinned-target concern only — `latest` never

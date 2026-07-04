@@ -19,7 +19,7 @@ export const StepId = {
   ProvisionGit: 'provision.git',
   ProvisionXcodeClt: 'provision.xcode-clt',
   ScaffoldGitInit: 'scaffold.git-init',
-  InstallBmad: 'install.bmad',
+  InstallMethod: 'install.method',
   InstallAgentCli: 'install.agent-cli',
   FinalizeSelfCheck: 'finalize.self-check',
 } as const;

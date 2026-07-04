@@ -40,7 +40,7 @@ describe('overallPercent (advances only on real completion, denominator floored)
     const steps = [
       step(StepId.ProvisionNode, Status.Done),
       step(StepId.ProvisionGit, Status.Skipped),
-      step(StepId.InstallBmad, Status.Working),
+      step(StepId.InstallMethod, Status.Working),
     ];
     expect(overallPercent(steps)).toBe(40); // 2 of max(3, 5)
   });
@@ -55,32 +55,32 @@ describe('overallPercent (advances only on real completion, denominator floored)
         step(StepId.ProvisionNode, Status.Done),
         step(StepId.ProvisionGit, Status.Done),
         step(StepId.ScaffoldGitInit, Status.Done),
-        step(StepId.InstallBmad, Status.Done),
+        step(StepId.InstallMethod, Status.Done),
         step(StepId.FinalizeSelfCheck, Status.Done),
       ]),
     ).toBe(100);
   });
 
   it('a working step does not advance the bar', () => {
-    expect(overallPercent([step(StepId.InstallBmad, Status.Working)])).toBe(0);
+    expect(overallPercent([step(StepId.InstallMethod, Status.Working)])).toBe(0);
   });
 });
 
 describe('slow-step activity', () => {
   it('flags the known-slow steps', () => {
-    expect(isSlowStep(StepId.InstallBmad)).toBe(true);
+    expect(isSlowStep(StepId.InstallMethod)).toBe(true);
     expect(isSlowStep(StepId.ProvisionXcodeClt)).toBe(true);
     expect(isSlowStep(StepId.ProvisionNode)).toBe(false);
   });
 
   it('shows indeterminate activity only while a slow step is working', () => {
-    expect(showsActivity([step(StepId.InstallBmad, Status.Working)])).toBe(true);
+    expect(showsActivity([step(StepId.InstallMethod, Status.Working)])).toBe(true);
     expect(showsActivity([step(StepId.ProvisionNode, Status.Working)])).toBe(false);
-    expect(showsActivity([step(StepId.InstallBmad, Status.Done)])).toBe(false);
+    expect(showsActivity([step(StepId.InstallMethod, Status.Done)])).toBe(false);
   });
 
   it('activeStep is the working one, if any', () => {
-    const working = step(StepId.InstallBmad, Status.Working);
+    const working = step(StepId.InstallMethod, Status.Working);
     expect(activeStep([step(StepId.ProvisionNode, Status.Done), working])).toBe(working);
     expect(activeStep([step(StepId.ProvisionNode, Status.Done)])).toBeUndefined();
   });
@@ -88,13 +88,13 @@ describe('slow-step activity', () => {
 
 describe('valueText (accessible, word-bearing)', () => {
   it('describes the working step with percent', () => {
-    expect(valueText([step(StepId.InstallBmad, Status.Working, 'Installing BMad…')])).toBe(
+    expect(valueText([step(StepId.InstallMethod, Status.Working, 'Installing BMad…')])).toBe(
       '0% - Installing BMad…',
     );
   });
 
   it('says Complete when all terminal, Stopped on failure', () => {
     expect(valueText([step(StepId.FinalizeSelfCheck, Status.Done)])).toBe('Complete.');
-    expect(valueText([step(StepId.InstallBmad, Status.Failed)])).toMatch(/Stopped/);
+    expect(valueText([step(StepId.InstallMethod, Status.Failed)])).toMatch(/Stopped/);
   });
 });

@@ -138,7 +138,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
         },
       },
       {
-        id: StepId.InstallBmad,
+        id: StepId.InstallMethod,
         run: async () => {
           // Windows: `npx` is a `.cmd` shim that spawn(shell:false) can't find by bare name → ENOENT.
           // The engine runs on the provisioned node (process.execPath), with npx-cli.js beside it, so
