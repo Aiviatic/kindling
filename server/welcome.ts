@@ -17,7 +17,7 @@ export interface WelcomeData {
 
 // "BMad" as a link to the BMAD-METHOD repo (mirrors the React <BmadLink>). `label` lets a caller
 // link a longer phrase like "BMad Method". Opens in a new tab.
-const BMAD_URL = 'https://github.com/bmad-code-org/BMAD-METHOD';
+const BMAD_URL = 'https://docs.bmad-method.org/';
 function bmadLink(label = 'BMad'): string {
   return `<a href="${BMAD_URL}" target="_blank" rel="noreferrer">${label}</a>`;
 }
