@@ -157,7 +157,7 @@ export function buildWelcomeHtml(data: WelcomeData): string {
 <main>
   <p class="eyebrow">All set</p>
   <h1>You're ready &#128293;</h1>
-  <p class="lede">Your project is set up with BMad and your tools.</p>
+  <p class="lede">Your project is set up with BMad and your tools. Open it in your editor to start building, and close this browser tab whenever you like.</p>
 ${versionsTable}${cliGuidance}  <p class="cli-guidance">Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what BMad can do.</p>
   <p class="cli-guidance">Want another project later? Run Kindling again. It remembers where your projects go.</p>
   <p><a href="https://aiviatic.com" target="_blank" rel="noreferrer">Join an Aiviatic workshop</a>, totally optional.</p>

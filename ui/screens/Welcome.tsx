@@ -160,10 +160,8 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
       <p className="eyebrow">All set</p>
       <h1 id="welcome-h">You're ready 🔥</h1>
       <p className="lede">
-        Your project is set up with BMad and your tools. Open it in your editor and start building.
-      </p>
-      <p className="lede">
-        Your project is ready. You can close this browser tab whenever you like.
+        Your project is set up with BMad and your tools. Open it in your editor to start building,
+        and close this browser tab whenever you like.
       </p>
 
       <table className="versions" data-testid="versions">
