@@ -50,6 +50,9 @@ function harness() {
     exit: vi.fn(),
     write: vi.fn(),
     uiDir: '/dist/ui',
+    // Prefs seams faked so no test touches the real ~/.kindling/prefs.json.
+    readLastProjectFolder: vi.fn(async () => null as string | null),
+    saveLastProjectFolder: vi.fn(async () => {}),
   };
   return { emitter, server, engine, deps, opts: () => captured! };
 }
@@ -103,6 +106,23 @@ describe('runServerMode', () => {
     expect(dir).not.toMatch(/^~/); // NOT the literal '~/…' (which would ENOENT and crash finish())
     expect(dir).toMatch(/[\\/]kindling-project$/);
     expect(deps.exit).toHaveBeenCalledWith(0);
+  });
+
+  it('saves the UNexpanded projects folder on /start and wires GET /prefs to the read seam', async () => {
+    const { emitter, deps, opts } = harness();
+    await runServerMode(emitter, deps);
+    void opts().commands.start({ ...config, projectDir: '~/My Projects/proj' });
+    // Saved as typed (with the ~), so the next run's prefill round-trips verbatim.
+    expect(deps.saveLastProjectFolder).toHaveBeenCalledWith('~/My Projects');
+    await expect(opts().getLastProjectFolder?.()).resolves.toBeNull();
+    expect(deps.readLastProjectFolder).toHaveBeenCalled();
+  });
+
+  it('does not save prefs when projectDir does not end with the project name', async () => {
+    const { emitter, deps, opts } = harness();
+    await runServerMode(emitter, deps);
+    void opts().commands.start({ ...config, projectDir: '/somewhere/else' });
+    expect(deps.saveLastProjectFolder).not.toHaveBeenCalled();
   });
 
   it('wires commands.inspect from the injected bmadAlreadyInstalled + readInstalledBmadVersion (no real fs)', async () => {

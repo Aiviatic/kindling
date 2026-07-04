@@ -11,6 +11,8 @@ import { Welcome } from './Welcome';
 export interface FlowProps {
   catalog: IdeCatalog;
   pins: Pins;
+  /** Last run's projects folder (prefs prefill), threaded through to Configure. */
+  initialFolder?: string | null;
 }
 
 type PreStartScreen = 'intro' | 'configure';
@@ -19,7 +21,7 @@ type PreStartScreen = 'intro' | 'configure';
 // Start (or Retry) hands off to the engine: Progress while running, the error/recovery screen
 // on failure (Retry in place, or — for a pre-existing-project conflict — back to Configure to
 // pick a new folder), Welcome on success (3.7 replaces that placeholder).
-export function Flow({ catalog, pins }: FlowProps) {
+export function Flow({ catalog, pins, initialFolder }: FlowProps) {
   const { state, commands, reset } = useInstaller();
   const [screen, setScreen] = useState<PreStartScreen>('intro');
   // `starting` covers the gap between pressing Start/Retry and the engine's first NEW event
@@ -67,6 +69,7 @@ export function Flow({ catalog, pins }: FlowProps) {
         startError={runError}
         onStart={handleStart}
         inspect={commands.inspect}
+        initialFolder={initialFolder}
       />
     );
   }
@@ -101,6 +104,7 @@ export function Flow({ catalog, pins }: FlowProps) {
       startError={runError}
       onStart={handleStart}
       inspect={commands.inspect}
+      initialFolder={initialFolder}
     />
   );
 }

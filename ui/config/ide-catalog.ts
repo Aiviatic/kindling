@@ -16,12 +16,13 @@ export interface IdeCatalog {
 }
 
 // Built-in fallback if public/platform-codes.yaml is missing/unreadable/corrupt. A short list
-// of the BMad-recommended IDs (still valid `--tools` values) so the user can always reach Start.
+// of well-known IDs (still valid `--tools` values) so the user can always reach Start. The
+// recommended flags mirror Kindling's curated set (KINDLING_RECOMMENDED in the generator).
 export const FALLBACK_IDES: IdeOption[] = [
   { id: 'claude-code', name: 'Claude Code', recommended: true },
   { id: 'codex', name: 'Codex', recommended: true },
-  { id: 'cursor', name: 'Cursor', recommended: true },
-  { id: 'github-copilot', name: 'GitHub Copilot', recommended: true },
+  { id: 'cursor', name: 'Cursor', recommended: false },
+  { id: 'github-copilot', name: 'GitHub Copilot', recommended: false },
 ];
 
 export const DEGRADED_MESSAGE =

@@ -1,6 +1,6 @@
 {
   "name": "@aiviatic/kindling",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -22,6 +22,10 @@
     ".": {
       "types": "./dist/engine/index.d.ts",
       "import": "./dist/engine/index.js"
+    },
+    "./web": {
+      "types": "./dist/engine/web.d.ts",
+      "import": "./dist/engine/web.js"
     },
     "./bootstrap/*": "./bootstrap/*"
   },

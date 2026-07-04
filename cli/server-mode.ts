@@ -8,6 +8,11 @@ import { readInstalledBmadVersion as defaultReadInstalledBmadVersion } from '../
 import { startServer as defaultStartServer, type RunningServer, type ServerCommands } from '../server/server';
 import { openBrowser as defaultOpenBrowser } from '../server/open-browser';
 import { writeWelcomeHtml as defaultWriteWelcome } from '../server/welcome';
+import {
+  projectFolderOf,
+  readLastProjectFolder as defaultReadLastProjectFolder,
+  saveLastProjectFolder as defaultSaveLastProjectFolder,
+} from '../server/prefs';
 import { expandTilde } from '../engine/expand-tilde';
 
 // Injectable seams so the lifecycle is unit-testable without a real install / browser / exit.
@@ -33,6 +38,9 @@ export interface ServerModeDeps {
    * injected as a fake in tests (no real fs).
    */
   readInstalledBmadVersion?: (dir: string) => Promise<string | null>;
+  /** Prefs seams (last-used projects folder, `~/.kindling/prefs.json`); fakes in tests (no real fs). */
+  readLastProjectFolder?: () => Promise<string | null>;
+  saveLastProjectFolder?: (folder: string) => Promise<void>;
 }
 
 /**
@@ -57,12 +65,18 @@ export async function runServerMode(
   const uiDir = deps.uiDir ?? fileURLToPath(new URL('../ui', import.meta.url));
   const bmadAlreadyInstalled = deps.bmadAlreadyInstalled ?? defaultBmadInstalled;
   const readInstalledBmadVersion = deps.readInstalledBmadVersion ?? defaultReadInstalledBmadVersion;
+  const readLastFolder = deps.readLastProjectFolder ?? (() => defaultReadLastProjectFolder());
+  const saveLastFolder = deps.saveLastProjectFolder ?? ((f: string) => defaultSaveLastProjectFolder(f));
 
   let lastConfig: Config | null = null;
   let engine: EngineCommands<unknown> | null = null;
 
   const commands: ServerCommands = {
     start: (config) => {
+      // Remember the UNexpanded projects folder for the next run's Configure prefill (a
+      // `~/My Projects` prefill should round-trip as typed). Best-effort, never blocks the run.
+      const folder = projectFolderOf(config.projectDir, config.projectName);
+      if (folder) void saveLastFolder(folder).catch(() => {});
       // Expand a leading `~` ONCE, at intake, so every consumer — the Engine AND the Welcome
       // writer in finish() — sees a real path (the UI default is the literal `~/kindling-project`).
       const c: Config = { ...config, projectDir: expandTilde(config.projectDir) };
@@ -85,6 +99,7 @@ export async function runServerMode(
     emitter,
     commands,
     uiDir,
+    getLastProjectFolder: readLastFolder,
     onWelcomeAck: () => {
       if (acked) return;
       acked = true;

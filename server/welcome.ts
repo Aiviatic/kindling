@@ -85,20 +85,24 @@ function versionsTableHtml(summaryJson: string, pinnedFallback: string): string 
   let node: { version: string | null } | undefined;
   let git: { version: string | null } | undefined;
   let cli: CliPresence[] = [];
+  let projectDir: string | undefined;
   try {
     const p = JSON.parse(summaryJson) as {
       node?: { version: string | null };
       git?: { version: string | null };
       cli?: CliPresence[];
+      projectDir?: unknown;
     };
     node = p.node;
     git = p.git;
     cli = Array.isArray(p.cli) ? p.cli : [];
+    projectDir = typeof p.projectDir === 'string' ? p.projectDir : undefined;
   } catch {
     // Malformed summary: still show the BMad row (versionChip falls back to the pin).
   }
   const chip = versionChip(summaryJson, pinnedFallback);
   const rows: string[] = [];
+  if (projectDir) rows.push(`<tr><th scope="row">Project folder</th><td>${esc(projectDir)}</td></tr>`);
   if (node) rows.push(`<tr><th scope="row">Node.js</th><td>${esc(node.version ?? 'Installed')}</td></tr>`);
   if (git) rows.push(`<tr><th scope="row">Git</th><td>${esc(git.version ?? 'Installed')}</td></tr>`);
   rows.push(
@@ -154,7 +158,9 @@ export function buildWelcomeHtml(data: WelcomeData): string {
   <p class="eyebrow">All set</p>
   <h1>You're ready &#128293;</h1>
   <p class="lede">Your project is set up with BMad and your tools.</p>
-${versionsTable}${cliGuidance}  <p><a href="https://aiviatic.com" target="_blank" rel="noreferrer">Join an Aiviatic workshop</a>, totally optional.</p>
+${versionsTable}${cliGuidance}  <p class="cli-guidance">Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what BMad can do.</p>
+  <p class="cli-guidance">Want another project later? Run Kindling again. It remembers where your projects go.</p>
+  <p><a href="https://aiviatic.com" target="_blank" rel="noreferrer">Join an Aiviatic workshop</a>, totally optional.</p>
 </main>
 </body>
 </html>

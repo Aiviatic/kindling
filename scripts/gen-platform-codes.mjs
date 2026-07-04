@@ -13,6 +13,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+// Kindling curates its own recommended set (the tools the picker shows up front). BMad's stars
+// (*) are deliberately ignored — e.g. BMad stars Cursor and GitHub Copilot, which we list under
+// "show all" instead. Edit this set to change what the collapsed picker shows.
+const KINDLING_RECOMMENDED = new Set(['claude-code', 'codex']);
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pinsPath = join(root, 'engine', 'pins.ts');
 const outPath = join(root, 'ui', 'public', 'platform-codes.yaml');
@@ -52,11 +57,11 @@ for (let i = divider + 1; i < lines.length; i++) {
   const line = lines[i];
   if (!line.trim()) break; // blank line ends the table
   const trimmed = line.trimStart();
-  const recommended = trimmed.startsWith('*');
-  const cols = (recommended ? trimmed.slice(1) : trimmed).trim().split(/\s{2,}/);
+  const starred = trimmed.startsWith('*');
+  const cols = (starred ? trimmed.slice(1) : trimmed).trim().split(/\s{2,}/);
   const [id, name] = cols;
   if (cols.length < 2 || !/^[a-z0-9-]+$/.test(id)) continue; // skip stray/legend lines
-  tools.push({ id, name, recommended });
+  tools.push({ id, name, recommended: KINDLING_RECOMMENDED.has(id) });
 }
 
 if (tools.length === 0) {
@@ -76,8 +81,9 @@ const header = `# GENERATED — do not edit by hand. Regenerate on every pins.bm
 # SOURCE OF TRUTH: the \`id\` values are the exact \`--tools\` IDs accepted by
 # \`bmad-method@${pin} install\`, captured verbatim from \`install --list-tools\`. A wrong id
 # fails the install, so this file is DERIVED from the pin (engine/pins.ts), never hand-listed.
-# \`recommended: true\` marks the IDs BMad stars (*). The UI shows recommended first; the rest
-# are reachable via "show all". If missing/unreadable, the UI falls back to a built-in list.
+# \`recommended: true\` marks Kindling's curated picks (see KINDLING_RECOMMENDED in the
+# generator; BMad's own stars are ignored). The UI shows recommended first; the rest are
+# reachable via "show all". If missing/unreadable, the UI falls back to a built-in list.
 `;
 
 const body = ordered

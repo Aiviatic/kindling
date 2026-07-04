@@ -1,6 +1,6 @@
 # Kindling
 
-**Blank computer to building in about five minutes — no terminal knowledge required.**
+**Blank computer to building in about five minutes, no terminal knowledge required.**
 
 Kindling is a cross-platform installer that gets a non-technical person from a
 fresh computer (Mac, Windows, or Linux) to a working, [BMad](https://github.com/bmad-code-org/BMAD-METHOD)-scaffolded
@@ -15,20 +15,21 @@ your machine, so you should be able to read exactly what that script does. See
 
 Three layers, so the scary parts happen where they can be explained:
 
-1. **A per-OS bootstrap script** (`bootstrap/`) handles the steps that need Node
-   present: it provisions a pinned Node.js (via `nvm` on macOS/Linux; on Windows it
-   downloads a pinned, SHA-256-verified portable Node, or reuses an existing Node 20+),
-   then launches Kindling in the same shell.
+1. **A per-OS bootstrap script** (`bootstrap/`) gets the prerequisites in place.
+   It provisions a pinned Node.js (via `nvm` on macOS/Linux; on Windows it downloads
+   a pinned, SHA-256-verified portable Node, or reuses an existing Node 20+). On
+   Windows it also provisions a pinned, SHA-256-verified portable Git (MinGit) if
+   Git is missing. It then launches Kindling in the same shell.
    - macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/go | bash`
    - Windows: download `kindling.cmd` and double-click it (it fetches and runs
      `setup.ps1` over HTTPS).
 2. **A temporary localhost server** (`server/`) stands up on `127.0.0.1`, serves a
-   friendly browser UI, provisions Git, scaffolds the project, runs
-   `npx bmad-method install`, and installs any agent CLIs you opt into. It exits
-   when the install completes.
-3. **A browser UI** (`ui/`) walks you through the few choices (project name,
-   tools) and shows honest progress — including the ~5-minute macOS developer-tools
-   dialog, so it never looks frozen.
+   friendly browser UI, provisions Git where the bootstrap hasn't already, scaffolds
+   the project, runs `npx bmad-method install`, and installs any agent CLIs you opt
+   into. It exits when the install completes.
+3. **A browser UI** (`ui/`) walks you through the few choices (project folder and
+   name, tools, what to include) and shows honest progress, including the ~5-minute
+   macOS developer-tools dialog, so it never looks frozen.
 
 The installer is published to npm as **`@aiviatic/kindling`**; the bootstrap's
 final step is `npx @aiviatic/kindling@<pinned-version>`.
@@ -60,13 +61,13 @@ npm run build   # tsup (Node payload) + Vite (browser UI)
 - **TypeScript + ESM** throughout; dev/build on the Node in `.nvmrc`, runtime floor **Node 20+**.
 - **React + Vite** for the browser UI; **tsup** bundles the Node side (`engine/`, `server/`, `cli/`).
 - **Vitest** for tests (co-located `*.test.ts(x)`); CI runs typecheck + lint + test + build on
-  macOS/Windows/Ubuntu × Node 20/24.
+  macOS, Windows, and Ubuntu, on Node 20 and 24.
 
-Layout: `engine/` (headless install logic) · `server/` (localhost server + Welcome
-page) · `ui/` (React install UI) · `cli/` + `bin/` (the `npx` entry) · `bootstrap/`
-(per-OS entry scripts) · `scripts/` (dev helpers).
+Layout: `engine/` (headless install logic), `server/` (localhost server + Welcome
+page), `ui/` (React install UI), `cli/` + `bin/` (the `npx` entry), `bootstrap/`
+(per-OS entry scripts), `scripts/` (dev helpers).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to get started — Windows fixes especially welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Windows fixes are especially welcome.
 
 ## License
 

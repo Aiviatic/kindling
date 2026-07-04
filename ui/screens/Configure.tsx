@@ -25,6 +25,11 @@ export interface ConfigureProps {
   enableBmadUpdate?: boolean;
   /** Probe debounce (ms). Prop so tests can shorten it; production uses the ~350ms default. */
   debounceMs?: number;
+  /**
+   * The projects folder from the LAST run (GET /prefs), so a re-run starts where the user
+   * already keeps projects. Null/absent falls back to the built-in default.
+   */
+  initialFolder?: string | null;
 }
 
 type ProbeStatus = 'idle' | 'checking' | 'done' | 'error';
@@ -46,11 +51,13 @@ export function Configure({
   inspect,
   enableBmadUpdate = ENABLE_BMAD_UPDATE,
   debounceMs = 350,
+  initialFolder,
 }: ConfigureProps) {
   const base = defaultConfig(pins);
   // Folder (where projects live) + project name are separate, first-class fields; the install path
   // is composed from them (<folder>/<name>) — friendlier for non-technical users than one raw path.
-  const [folder, setFolder] = useState(DEFAULT_PROJECT_FOLDER);
+  // The folder prefers the last run's saved value (prefs) over the built-in default.
+  const [folder, setFolder] = useState(initialFolder ?? DEFAULT_PROJECT_FOLDER);
   const [projectName, setProjectName] = useState(base.projectName);
   const [ides, setIdes] = useState<string[]>(base.ides);
   const [modules, setModules] = useState<string[]>(base.modules);
@@ -167,9 +174,10 @@ export function Configure({
   return (
     <section className="screen screen--configure" aria-labelledby="cfg-h">
       <p className="eyebrow">Configure</p>
-      <h1 id="cfg-h">Everything's set, just press Start.</h1>
+      <h1 id="cfg-h">Give your project a name.</h1>
       <p className="lede">
-        We picked sensible defaults for you. <b>You don't have to change a thing.</b>
+        We picked sensible defaults for everything else. Change whatever you like, then
+        press Start.
       </p>
 
       {/* Project folder + name — first-class, shown up front (not hidden under Customize). Both

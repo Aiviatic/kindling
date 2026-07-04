@@ -271,8 +271,27 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               </p>
             )}
           </div>
+
+          {/* The first thing to actually DO once inside — BMad is already installed in the
+              project, so /bmad-help is the guided front door for a non-developer. */}
+          <p className="start-note" data-testid="start-first-prompt">
+            Once you're in, just describe what you want to build. You can also type{' '}
+            <code>/bmad-help</code> to see what BMad can do.
+          </p>
         </div>
       )}
+
+      {/* Good-to-know strip: the saved welcome.html copy + the re-run path. Calm, never blocking. */}
+      <div className="cli-guidance" data-testid="good-to-know">
+        <p className="eyebrow">Good to know</p>
+        <p className="start-note">
+          A copy of this page is saved in your project folder as <code>welcome.html</code>, so
+          you can come back to these instructions any time.
+        </p>
+        <p className="start-note">
+          Want another project later? Run Kindling again. It remembers where your projects go.
+        </p>
+      </div>
 
       {/* Passive workshop strip — informational, never autofocused or required. A plain <div>
           (not an <aside>) so it isn't a nested complementary landmark inside the screen region. */}

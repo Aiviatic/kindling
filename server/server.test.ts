@@ -235,4 +235,43 @@ describe('startServer', () => {
     });
     expect(status).toBe(404);
   });
+
+  // GET /prefs — the Configure prefill. Read-only; every failure degrades to null.
+  const getPrefs = (url: string): Promise<{ status: number; body: string }> =>
+    new Promise((resolve, reject) => {
+      get(url + 'prefs', (res) => {
+        let body = '';
+        res.on('data', (c) => (body += String(c)));
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body }));
+      }).on('error', reject);
+    });
+
+  it('GET /prefs returns the saved folder from the injected getter', async () => {
+    running = await startServer({
+      emitter: new EngineEmitter(),
+      commands: fakeCommands(),
+      getLastProjectFolder: async () => '~/My Projects',
+    });
+    const { status, body } = await getPrefs(running.url);
+    expect(status).toBe(200);
+    expect(JSON.parse(body)).toEqual({ lastProjectFolder: '~/My Projects' });
+  });
+
+  it('GET /prefs without a getter → null (existing hosts do not break)', async () => {
+    running = await startServer({ emitter: new EngineEmitter(), commands: fakeCommands() });
+    const { status, body } = await getPrefs(running.url);
+    expect(status).toBe(200);
+    expect(JSON.parse(body)).toEqual({ lastProjectFolder: null });
+  });
+
+  it('GET /prefs degrades to null when the getter rejects', async () => {
+    running = await startServer({
+      emitter: new EngineEmitter(),
+      commands: fakeCommands(),
+      getLastProjectFolder: () => Promise.reject(new Error('boom')),
+    });
+    const { status, body } = await getPrefs(running.url);
+    expect(status).toBe(200);
+    expect(JSON.parse(body)).toEqual({ lastProjectFolder: null });
+  });
 });

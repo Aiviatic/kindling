@@ -64,7 +64,7 @@ describe('<Flow>', () => {
     // Intro
     fireEvent.click(screen.getByRole('button', { name: "Let's go" }));
     // Configure
-    expect(screen.getByRole('heading', { name: /just press Start/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Give your project a name/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start' }));
     expect(commands.start).toHaveBeenCalledTimes(1);
 
@@ -94,14 +94,14 @@ describe('<Flow>', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
     // Conflict → non-destructive choose-folder, which returns to Configure.
     fireEvent.click(screen.getByRole('button', { name: 'Choose a different folder' }));
-    expect(screen.getByRole('heading', { name: /just press Start/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Give your project a name/ })).toBeInTheDocument();
   });
 
   it('threads commands.inspect to the PRIMARY Intro→Configure <Configure> (the probe fires from it)', async () => {
     const { commands } = renderFlow();
     // Primary path: Intro → Configure (NOT the reconfiguring site).
     fireEvent.click(screen.getByRole('button', { name: "Let's go" }));
-    expect(screen.getByRole('heading', { name: /just press Start/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Give your project a name/ })).toBeInTheDocument();
     // Open Customize so the (gated-ON) probe effect can run — it only fires if `inspect` was
     // actually passed through; a missing prop would short-circuit the effect and never call it.
     fireEvent.click(screen.getByRole('button', { name: /Customize/ }));

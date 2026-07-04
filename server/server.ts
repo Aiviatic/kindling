@@ -28,6 +28,8 @@ export interface StartServerOptions {
   /** Called when the Welcome screen render-acks (POST /ack). The host uses this to write the
    *  static welcome.html and exit the ephemeral server — only fired on success (3.7 lifecycle). */
   onWelcomeAck?: () => void;
+  /** Last run's projects folder for the Configure prefill (GET /prefs); absent → null. */
+  getLastProjectFolder?: () => Promise<string | null>;
 }
 
 export interface RunningServer {
@@ -82,7 +84,7 @@ async function serveStatic(uiDir: string, pathname: string, res: ServerResponse)
 // Stands up the localhost server: SSE event stream, command POSTs, and (optional) static UI.
 // Binds 127.0.0.1 on an ephemeral port (NFR6); resolves once listening.
 export async function startServer(opts: StartServerOptions): Promise<RunningServer> {
-  const { emitter, commands, uiDir, onWelcomeAck } = opts;
+  const { emitter, commands, uiDir, onWelcomeAck, getLastProjectFolder } = opts;
   const sseClients = new Set<ServerResponse>();
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -113,6 +115,23 @@ export async function startServer(opts: StartServerOptions): Promise<RunningServ
         off();
         sseClients.delete(res);
       });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/prefs') {
+      // Read-only prefill for Configure. A prefs read failure degrades to null (no prefill) —
+      // same posture as every other prefs path: a convenience, never an error.
+      let lastProjectFolder: string | null = null;
+      if (getLastProjectFolder) {
+        try {
+          lastProjectFolder = await getLastProjectFolder();
+        } catch {
+          lastProjectFolder = null;
+        }
+      }
+      res
+        .writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+        .end(JSON.stringify({ lastProjectFolder }));
       return;
     }
 

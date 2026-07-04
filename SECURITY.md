@@ -18,9 +18,9 @@ public disclosure.
 Being able to read this is the point of open-sourcing the installer. On a fresh
 machine, Kindling:
 
-1. **Provisions a Node.js runtime** — via `nvm` on macOS/Linux, or a portable
+1. **Provisions a Node.js runtime**, via `nvm` on macOS/Linux or a portable
    Node download on Windows (pinned versions live in `engine/pins.ts`).
-2. **Provisions Git** — reusing a system Git if present, otherwise installing it.
+2. **Provisions Git**, reusing a system Git if present, otherwise installing it.
 3. **Scaffolds a project** and installs the **BMad Method** into it
    (`npx bmad-method install`), plus any agent CLIs you opt into (e.g. Claude
    Code / Codex, installed with `npm install -g`).
@@ -33,7 +33,7 @@ The bootstrap entry points are plain, readable scripts in [`bootstrap/`](bootstr
   [`bootstrap/setup.sh`](bootstrap/setup.sh).
 - Windows: a one-file `kindling.cmd` that fetches and runs
   [`bootstrap/setup.ps1`](bootstrap/setup.ps1) over HTTPS
-  (`irm … | iex`, the PowerShell equivalent of `curl … | bash`).
+  (`irm ... | iex`, the PowerShell equivalent of `curl ... | bash`).
 
 ## Security properties
 
@@ -41,7 +41,7 @@ The bootstrap entry points are plain, readable scripts in [`bootstrap/`](bootstr
   you run it.
 - **HTTPS only.** The bootstrap scripts and the package are fetched over TLS.
 - **Windows execution policy** is set with `-ExecutionPolicy Bypass` **scoped to
-  the single PowerShell process** — it changes no system-wide setting and is
+  the single PowerShell process**. It changes no system-wide setting and is
   fully reversible.
 - **The local server binds `127.0.0.1`** on an ephemeral port, requires a custom
   header on mutating requests (a CSRF guard), and serves only its own built UI
@@ -51,11 +51,12 @@ The bootstrap entry points are plain, readable scripts in [`bootstrap/`](bootstr
 
 ## Known hardening roadmap
 
-We are transparent about what is not yet hardened:
+Some things are not hardened yet, and we'd rather say so here than have you
+find out later:
 
 - **Download integrity.** The Windows portable-Node download is SHA-256-verified
-  against Node's published `SHASUMS256.txt` before it is extracted or run. Still
-  unverified: `nvm`'s install script (macOS/Linux) and portable Git — verifying
-  those is the remaining hardening item.
+  against Node's published `SHASUMS256.txt` before it is extracted or run. The
+  `nvm` install script (macOS/Linux) and portable Git are still unverified;
+  those are the remaining hardening items.
 
 If you spot something else, please tell us at **security@aiviatic.com**.

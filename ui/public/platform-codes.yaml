@@ -5,13 +5,12 @@
 # SOURCE OF TRUTH: the `id` values are the exact `--tools` IDs accepted by
 # `bmad-method@6.9.0 install`, captured verbatim from `install --list-tools`. A wrong id
 # fails the install, so this file is DERIVED from the pin (engine/pins.ts), never hand-listed.
-# `recommended: true` marks the IDs BMad stars (*). The UI shows recommended first; the rest
-# are reachable via "show all". If missing/unreadable, the UI falls back to a built-in list.
+# `recommended: true` marks Kindling's curated picks (see KINDLING_RECOMMENDED in the
+# generator; BMad's own stars are ignored). The UI shows recommended first; the rest are
+# reachable via "show all". If missing/unreadable, the UI falls back to a built-in list.
 ides:
   - { id: claude-code, name: "Claude Code", recommended: true }
   - { id: codex, name: "Codex", recommended: true }
-  - { id: cursor, name: "Cursor", recommended: true }
-  - { id: github-copilot, name: "GitHub Copilot", recommended: true }
   - { id: adal, name: "AdaL" }
   - { id: auggie, name: "Auggie" }
   - { id: goose, name: "Block Goose" }
@@ -20,9 +19,11 @@ ides:
   - { id: codewhale, name: "CodeWhale" }
   - { id: command-code, name: "Command Code" }
   - { id: crush, name: "Crush" }
+  - { id: cursor, name: "Cursor" }
   - { id: droid, name: "Factory Droid" }
   - { id: firebender, name: "Firebender" }
   - { id: gemini, name: "Gemini CLI" }
+  - { id: github-copilot, name: "GitHub Copilot" }
   - { id: antigravity, name: "Google Antigravity" }
   - { id: hermes, name: "Hermes Agent" }
   - { id: bob, name: "IBM Bob" }

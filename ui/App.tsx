@@ -4,6 +4,7 @@ import { pins } from '../engine/pins';
 import { InstallerProvider } from './state/context';
 import { Flow } from './screens/Flow';
 import { loadIdeCatalog, type IdeCatalog } from './config/ide-catalog';
+import { loadLastProjectFolder } from './lib/prefs';
 
 // Window-framed app shell (DESIGN.md): a faux browser/app window — titlebar with traffic-light
 // dots + a url bar — over the dark flame stage, content centered at ~1000px max. The guided
@@ -12,10 +13,16 @@ export default function App() {
   // Load the IDE catalog once; until it resolves, the Configure picker has nothing to show.
   // loadIdeCatalog never throws — it degrades to a built-in list — so there's no error branch.
   const [catalog, setCatalog] = useState<IdeCatalog | null>(null);
+  // Last run's projects folder (GET /prefs). `undefined` = still loading (gate the Flow render so
+  // Configure mounts with the prefill); `null` = no saved folder → the built-in default.
+  const [lastFolder, setLastFolder] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     let live = true;
     void loadIdeCatalog().then((c) => {
       if (live) setCatalog(c);
+    });
+    void loadLastProjectFolder().then((f) => {
+      if (live) setLastFolder(f);
     });
     return () => {
       live = false;
@@ -35,8 +42,8 @@ export default function App() {
         </div>
         <main className="app-stage">
           <InstallerProvider>
-            {catalog ? (
-              <Flow catalog={catalog} pins={pins} />
+            {catalog && lastFolder !== undefined ? (
+              <Flow catalog={catalog} pins={pins} initialFolder={lastFolder} />
             ) : (
               <p className="lede" role="status">
                 Loading…

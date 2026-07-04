@@ -4,7 +4,7 @@ import { defineConfig } from 'tsup';
 // Entries are placeholders this story; real modules land in Story 1.2 (engine), 1.3 (cli),
 // and Epic 3 (server).
 export default defineConfig({
-  entry: ['engine/index.ts', 'server/index.ts', 'cli/main.ts'],
+  entry: ['engine/index.ts', 'engine/web.ts', 'server/index.ts', 'cli/main.ts'],
   format: ['esm'],
   outDir: 'dist',
   target: 'node20',
