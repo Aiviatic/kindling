@@ -4,6 +4,7 @@ import { Phase, StepId, Status, ErrorCode, type Config, type EngineCommands, typ
 import { scaffold as defaultScaffold, type ScaffoldOptions, type ScaffoldOutcome } from './orchestrate/scaffold';
 import { runBmadInstall as defaultRunBmadInstall, type BmadInstallOptions, type BmadInstallResult } from './orchestrate/bmad-install';
 import { installAgentCli as defaultInstallAgentCli, eligibleAgentClis, type AgentCliOptions, type AgentCliResult } from './orchestrate/agent-cli';
+import { npxCliPath, npmCliPath } from './orchestrate/launch';
 import { runSelfCheck as defaultRunSelfCheck, type SelfCheckOptions } from './self-check';
 import { detectDependencies as defaultDetect, type DetectOptions, type DependencyState } from './provision/detect';
 import { provisionGitUnix as defaultProvisionGit, type ProvisionGitUnixOptions, type ProvisionGitResult } from './provision/git-unix';
@@ -139,7 +140,16 @@ export class Engine implements EngineCommands<EngineRunResult> {
       {
         id: StepId.InstallBmad,
         run: async () => {
-          const result = await this.deps.runBmadInstall({ config: this.config, emitter: this.emitter });
+          // Windows: `npx` is a `.cmd` shim that spawn(shell:false) can't find by bare name → ENOENT.
+          // The engine runs on the provisioned node (process.execPath), with npx-cli.js beside it, so
+          // invoke `node npx-cli.js …` instead. macOS/Linux keep the bare-`npx` default untouched.
+          const result = await this.deps.runBmadInstall({
+            config: this.config,
+            emitter: this.emitter,
+            ...(this.deps.platform === 'win32'
+              ? { npxCommand: process.execPath, npxPrefixArgs: [npxCliPath(process.execPath)] }
+              : {}),
+          });
           this.bmadInstalled = result.ok;
           return result.ok;
         },
@@ -157,7 +167,15 @@ export class Engine implements EngineCommands<EngineRunResult> {
           // Non-fatal: the step returns true unconditionally. The install RESULT is intentionally
           // not stored — the self-check re-derives CLI presence by probing (Story 6.2), so the
           // presence report is robust to a mid-run failure regardless of this step's outcome.
-          await this.deps.installAgentCli({ config: this.config, emitter: this.emitter });
+          // Windows: same `.cmd`-shim problem as BMad — `npm` can't spawn by bare name (shell:false),
+          // so route through `node npm-cli.js …`. macOS/Linux keep the bare-`npm` default.
+          await this.deps.installAgentCli({
+            config: this.config,
+            emitter: this.emitter,
+            ...(this.deps.platform === 'win32'
+              ? { npmCommand: process.execPath, npmPrefixArgs: [npmCliPath(process.execPath)] }
+              : {}),
+          });
           return true;
         },
       },

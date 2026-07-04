@@ -18,6 +18,11 @@ export function npxCliPath(nodeExe: string): string {
   return join(dirname(nodeExe), 'node_modules', 'npm', 'bin', 'npx-cli.js');
 }
 
+/** Path to npm's CLI script beside a provisioned node binary (the npm bundled with the dist). */
+export function npmCliPath(nodeExe: string): string {
+  return join(dirname(nodeExe), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+}
+
 /**
  * Compose the command to launch Kindling once Node is provisioned (Story 2.6). The clean-runtime
  * rule (AR6): never depend on a freshly-mutated PATH —

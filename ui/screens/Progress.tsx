@@ -38,7 +38,7 @@ export function Progress() {
       aria-busy={state.overall === 'running' || undefined}
     >
       <p className="eyebrow">Setting things up</p>
-      <h1 id="prog-h">Hang tight — we're getting everything ready.</h1>
+      <h1 id="prog-h">Hang tight, we're getting everything ready.</h1>
 
       <div
         className={`progressbar${activity ? ' progressbar--activity' : ''}`}

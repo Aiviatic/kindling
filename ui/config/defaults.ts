@@ -8,18 +8,21 @@ export interface ModuleOption {
   recommended: boolean;
 }
 
-// User-facing BMad module choices (a curated subset of the installed modules). bmm is the
-// default/recommended core; the rest are opt-in. ids are exact `--modules` values.
+// User-facing BMad module choices (a curated subset of the installed modules). bmm + cis are the
+// default/recommended set; the rest are opt-in. ids are exact `--modules` values. Order matters
+// (it's the display order): Creative Studio sits above BMad Builder.
 export const MODULE_OPTIONS: ModuleOption[] = [
-  { id: 'bmm', name: 'BMad Method', description: 'The core planning + dev workflow.', recommended: true },
-  { id: 'bmb', name: 'BMad Builder', description: 'Build your own agents & workflows.', recommended: false },
-  { id: 'cis', name: 'Creative Studio', description: 'Brainstorming & ideation tools.', recommended: false },
+  { id: 'bmm', name: 'BMad Method', description: 'The core planning and dev workflow.', recommended: true },
+  { id: 'cis', name: 'Creative Studio', description: 'Brainstorming and ideation tools.', recommended: true },
+  { id: 'bmb', name: 'BMad Builder', description: 'Build your own agents and workflows.', recommended: false },
 ];
 
 export const DEFAULT_IDE = 'claude-code';
-export const DEFAULT_MODULES = ['bmm'];
-export const DEFAULT_PROJECT_NAME = 'kindling-project';
-export const DEFAULT_PROJECT_DIR = '~/kindling-project';
+export const DEFAULT_MODULES = ['bmm', 'cis'];
+// Plain, friendly defaults for non-technical users: a "My Projects" folder holding "My Project".
+export const DEFAULT_PROJECT_NAME = 'My Project';
+export const DEFAULT_PROJECT_FOLDER = '~/My Projects';
+export const DEFAULT_PROJECT_DIR = `${DEFAULT_PROJECT_FOLDER}/${DEFAULT_PROJECT_NAME}`;
 
 /**
  * Smart-default Config so the user can reach Start without touching anything (FR-14): a sane

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Config, Pins, InspectResult } from '../../engine/contract';
 import type { IdeCatalog, IdeOption } from '../config/ide-catalog';
-import { MODULE_OPTIONS, defaultConfig } from '../config/defaults';
+import { MODULE_OPTIONS, defaultConfig, DEFAULT_PROJECT_FOLDER } from '../config/defaults';
 import { AGENT_CLI_LABELS, isAgentCliId } from '../config/agent-cli';
 import { ENABLE_BMAD_UPDATE, BMAD_UPDATE_COPY } from '../config/bmad-update';
 import { Button } from '../components/Button';
@@ -48,7 +48,9 @@ export function Configure({
   debounceMs = 350,
 }: ConfigureProps) {
   const base = defaultConfig(pins);
-  const [projectDir, setProjectDir] = useState(base.projectDir);
+  // Folder (where projects live) + project name are separate, first-class fields; the install path
+  // is composed from them (<folder>/<name>) — friendlier for non-technical users than one raw path.
+  const [folder, setFolder] = useState(DEFAULT_PROJECT_FOLDER);
   const [projectName, setProjectName] = useState(base.projectName);
   const [ides, setIdes] = useState<string[]>(base.ides);
   const [modules, setModules] = useState<string[]>(base.modules);
@@ -87,9 +89,11 @@ export function Configure({
   // Everything bmad-method needs for a fresh non-interactive install must be present: at least
   // one tool (--tools) and one module (--modules), and a non-blank directory/name. The defaults
   // satisfy all of these, so an untouched screen can always Start (FR-14).
-  const dir = projectDir.trim();
+  // Compose the install path from folder + name (trailing slashes on the folder are trimmed).
+  const folderTrim = folder.trim().replace(/[\\/]+$/, '');
   const name = projectName.trim();
-  const canStart = ides.length > 0 && modules.length > 0 && dir.length > 0 && name.length > 0;
+  const dir = folderTrim && name ? `${folderTrim}/${name}` : '';
+  const canStart = ides.length > 0 && modules.length > 0 && folderTrim.length > 0 && name.length > 0;
 
   // Deselecting an eligible tool from the picker forgets its opt-out, so a later re-select is
   // default-on again (and its opt-in row simply disappears while deselected — AC-3).
@@ -163,18 +167,35 @@ export function Configure({
   return (
     <section className="screen screen--configure" aria-labelledby="cfg-h">
       <p className="eyebrow">Configure</p>
-      <h1 id="cfg-h">Everything's set — just press Start.</h1>
+      <h1 id="cfg-h">Everything's set, just press Start.</h1>
       <p className="lede">
         We picked sensible defaults for you. <b>You don't have to change a thing.</b>
       </p>
 
-      {/* Project location — first-class, shown up front (FR-14); editable under Customize. */}
+      {/* Project folder + name — first-class, shown up front (not hidden under Customize). Both
+          editable, each with a plain-language explanation for non-technical users. */}
       <div className="field">
-        <span className="field-label">Where your project goes</span>
-        <div className="field-row">
-          <span className="field-value">📁 {dir || '—'}</span>
-          {dir === base.projectDir && <span className="default-pill">✓ Default location</span>}
-        </div>
+        <TextInput
+          label="Where your projects go"
+          value={folder}
+          onChange={(e) => setFolder(e.target.value)}
+        />
+        <p className="field-note">
+          The folder on your computer where your projects are kept. We'll create it if it isn't there yet.
+        </p>
+      </div>
+      <div className="field">
+        <TextInput
+          label="Project name"
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+        />
+        <p className="field-note">
+          A short name for this project. It becomes a new folder inside the one above:
+        </p>
+        <p className="field-row">
+          <span className="field-value">📁 {dir || '…'}</span>
+        </p>
       </div>
 
       {/* IDE Picker */}
@@ -260,7 +281,10 @@ export function Configure({
         </ul>
       </fieldset>
 
-      {/* Customize disclosure (collapsed by default) */}
+      {/* Customize disclosure — now holds ONLY the gated "Update to latest BMad" affordance (Story
+          7.2); the project folder + name are first-class fields above. Rendered only when the cohort
+          gate is on, so a normal-flow user has nothing extra to customize. */}
+      {enableBmadUpdate && (
       <div className="disclosure">
         <Button
           variant="ghost"
@@ -272,16 +296,6 @@ export function Configure({
         </Button>
         {customizeOpen && (
           <div id="customize-panel" className="disclosure-panel">
-            <TextInput
-              label="Project name"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-            />
-            <TextInput
-              label="Where your project goes"
-              value={projectDir}
-              onChange={(e) => setProjectDir(e.target.value)}
-            />
 
             {/* Epic-7 existing-project detection + opt-in "Update to latest BMad" (Story 7.2).
                 Gated (cohort window OFF) AND scoped to this Customize panel — two guards keeping it
@@ -335,6 +349,7 @@ export function Configure({
           </div>
         )}
       </div>
+      )}
 
       {startError && (
         <p className="start-error" role="alert">

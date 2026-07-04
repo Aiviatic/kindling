@@ -112,6 +112,6 @@ export async function runServerMode(
   };
 
   openBrowser(server.url, { platform: deps.platform });
-  write(`Kindling is running — open ${server.url} if it didn't open automatically.`);
+  write(`Kindling is running - open ${server.url} if it didn't open automatically.`);
   return server;
 }

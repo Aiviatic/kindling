@@ -86,6 +86,7 @@ describe('installAgentCli', () => {
     const failed = events.find((e) => e.status === Status.Failed)!;
     expect(failed.errorCode).toBe(ErrorCode.AgentCliInstallFailed);
     expect(failed.humanMessage).toContain('npm install -g @anthropic-ai/claude-code'); // manual fallback
+    expect(failed.humanMessage).toContain('npm ERR!'); // the real child stderr is surfaced too
     // ok reflects "ran to completion", independent of the individual failure (non-fatal).
     expect(result).toEqual({ ok: true, installed: [], skipped: [], failed: ['claude-code'] });
   });
@@ -102,7 +103,9 @@ describe('installAgentCli', () => {
 
     const statuses = events.map((e) => e.status);
     expect(statuses).toEqual([Status.Working, Status.Failed]);
-    expect(events.find((e) => e.status === Status.Failed)!.errorCode).toBe(ErrorCode.AgentCliInstallFailed);
+    const failed = events.find((e) => e.status === Status.Failed)!;
+    expect(failed.errorCode).toBe(ErrorCode.AgentCliInstallFailed);
+    expect(failed.humanMessage).toContain('spawn npm ENOENT'); // spawn error surfaced, not blank
     expect(result.failed).toEqual(['claude-code']);
   });
 
@@ -173,6 +176,26 @@ describe('installAgentCli', () => {
     });
     const installCall = exec.mock.calls.find(([, args]) => !isProbe(args))!;
     expect(installCall[0]).toBe('/abs/node');
+  });
+
+  it('threads npmPrefixArgs before the install args (Windows node npm-cli.js wiring)', async () => {
+    const exec = execFake();
+    await installAgentCli({
+      config: config({ installCli: ['claude-code'] }),
+      emitter: new EngineEmitter(),
+      exec,
+      npmCommand: '/abs/node',
+      npmPrefixArgs: ['/abs/node_modules/npm/bin/npm-cli.js'],
+    });
+    const installCall = exec.mock.calls.find(([, args]) => !isProbe(args))!;
+    expect(installCall[0]).toBe('/abs/node');
+    // Prefix (npm-cli.js) comes first, THEN the unchanged `install -g <pkg>`.
+    expect(installCall[1]).toEqual([
+      '/abs/node_modules/npm/bin/npm-cli.js',
+      'install',
+      '-g',
+      '@anthropic-ai/claude-code',
+    ]);
   });
 
   it('probes through the resolveBin seam (Windows shim resolution)', async () => {

@@ -70,6 +70,14 @@ export interface AgentCliOptions {
    */
   npmCommand?: string;
   /**
+   * Args prepended to the exec argv, before `install -g <pkg>`. Default `[]`. On Windows `npmCommand`
+   * is the provisioned `node` and this carries `[npmCliPath(node)]`, so the effective invocation is
+   * `node npm-cli.js install -g <pkg>` — the shell:false-safe equivalent of the bare `npm.cmd` shim
+   * (which spawn can't find by bare name on Windows). Empty on macOS/Linux. Mirrors bmad-install's
+   * `npxPrefixArgs`.
+   */
+  npmPrefixArgs?: string[];
+  /**
    * Resolve an agent CLI's bin name to a spawnable form before the idempotent-skip probe. Default:
    * identity. On Windows a global `npm install -g` writes a `claude.cmd`/`.ps1` shim (not a bare
    * `claude` executable), and `exec` uses `shell:false` — so a bare bin can't be spawned there and
@@ -146,16 +154,35 @@ export async function installAgentCli(opts: AgentCliOptions): Promise<AgentCliRe
     // event including the manual-install fallback, and continue to the next CLI (never throw).
     const failMessage = `${agentCliMessages.failed(name)} ${agentCliMessages.manualInstall(pkg)}`;
     try {
-      const result = await exec(npm, ['install', '-g', pkg]); // NO @version — latest (deliberate)
+      // On Windows npmPrefixArgs is `[npmCliPath(node)]` and npm is the provisioned node, so the
+      // effective invocation is `node npm-cli.js install -g <pkg>` (shell:false-safe). Empty elsewhere.
+      const result = await exec(npm, [...(opts.npmPrefixArgs ?? []), 'install', '-g', pkg]); // NO @version — latest (deliberate)
       if (result.code === 0) {
         emit(Status.Done, agentCliMessages.done(name));
         installed.push(id);
       } else {
-        emit(Status.Failed, failMessage, 'error', ErrorCode.AgentCliInstallFailed);
+        // Surface a truncated tail of the child's stderr (fall back to stdout) so the failure carries
+        // the actual npm error instead of only the generic message + manual-install fallback.
+        const raw = (result.stderr.trim() ? result.stderr : result.stdout).trim();
+        const detail = raw.slice(-600).trim();
+        emit(
+          Status.Failed,
+          detail ? `${failMessage}\n\nDetails:\n${detail}` : failMessage,
+          'error',
+          ErrorCode.AgentCliInstallFailed,
+        );
         failed.push(id);
       }
-    } catch {
-      emit(Status.Failed, failMessage, 'error', ErrorCode.AgentCliInstallFailed);
+    } catch (err) {
+      // spawn error (e.g. npm not found by bare name on Windows) — append the real error message
+      // so it isn't a blank failure.
+      const detail = err instanceof Error ? err.message : String(err);
+      emit(
+        Status.Failed,
+        `${failMessage} (${detail})`,
+        'error',
+        ErrorCode.AgentCliInstallFailed,
+      );
       failed.push(id);
     }
   }

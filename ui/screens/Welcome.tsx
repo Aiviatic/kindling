@@ -71,16 +71,45 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
   // Passive opt-in (5.2 / FR-19/20) — consent-first, never required, never blocks. Submitting is
   // best-effort: it degrades to a quiet "thanks" whether the endpoint is unconfigured (hosting
   // deferred) or the post fails — the user's project is already done either way.
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [location, setLocation] = useState('');
+  const [city, setCity] = useState('');
+  const [state_, setState_] = useState('');
   const [optedIn, setOptedIn] = useState(false);
   const sent = useRef(false); // synchronous double-submit guard (state flips a tick later)
   const optIn = (): void => {
     if (sent.current) return;
     sent.current = true;
     setOptedIn(true); // acknowledge immediately; capture is best-effort and never surfaces errors
-    void submitOptIn({ email, location });
+    void submitOptIn({ firstName, lastName, email, city, state: state_ });
   };
+
+  // Best-effort geo pre-fill (FR-20) — on mount, try a free IP geolocation lookup and pre-fill
+  // City/State so the user rarely has to type them. NEVER blocks render, never throws, fully silent
+  // on any failure, and NEVER clobbers a value the user already typed. Guarded on `typeof fetch`
+  // because jsdom (tests) may not provide a real fetch.
+  useEffect(() => {
+    if (typeof fetch !== 'function') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        if (!res.ok) return;
+        const data = (await res.json()) as { city?: unknown; region?: unknown };
+        if (cancelled) return;
+        // Only fill fields the user hasn't touched yet (functional updater: no stale-closure race).
+        if (typeof data.city === 'string' && data.city) setCity((cur) => (cur ? cur : data.city as string));
+        if (typeof data.region === 'string' && data.region) setState_((cur) => (cur ? cur : data.region as string));
+      } catch {
+        // silent: geo pre-fill is a convenience, never a requirement
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once on mount
+  }, []);
 
   const summary = state.summaryJson;
   const parsed = parseSummary(summary);
@@ -96,6 +125,9 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
       <h1 id="welcome-h">You're ready 🔥</h1>
       <p className="lede">
         Your project is set up with BMad and your tools. Open it in your editor and start building.
+      </p>
+      <p className="lede">
+        Your project is ready. You can close this browser tab whenever you like.
       </p>
 
       <table className="versions" data-testid="versions">
@@ -185,6 +217,18 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
             }}
           >
             <TextInput
+              label="First name (optional)"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="Ada"
+            />
+            <TextInput
+              label="Last name (optional)"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Lovelace"
+            />
+            <TextInput
               label="Email (optional)"
               type="email"
               value={email}
@@ -192,10 +236,16 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               placeholder="you@example.com"
             />
             <TextInput
-              label="Where are you? (optional)"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="City or region"
+              label="City (optional)"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="City"
+            />
+            <TextInput
+              label="State (optional)"
+              value={state_}
+              onChange={(e) => setState_(e.target.value)}
+              placeholder="State"
             />
             <Button type="submit" variant="ghost" disabled={email.trim() === ''}>
               Keep me posted

@@ -66,8 +66,8 @@ export function showsActivity(steps: StepView[]): boolean {
 export function valueText(steps: StepView[]): string {
   if (steps.length === 0) return 'Getting started…'; // pre-first-event; `[].every()` is vacuously true
   const active = activeStep(steps);
-  if (active) return `${overallPercent(steps)}% — ${active.message}`;
-  if (steps.some((s) => s.status === Status.Failed)) return 'Stopped — see the details below.';
+  if (active) return `${overallPercent(steps)}% - ${active.message}`;
+  if (steps.some((s) => s.status === Status.Failed)) return 'Stopped, see the details below.';
   if (steps.every(isTerminal)) return 'Complete.';
   return `${overallPercent(steps)}%`;
 }

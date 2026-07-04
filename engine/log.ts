@@ -33,7 +33,7 @@ function render(entry: FailureLogEntry, timestamp: string): string {
     entry.error,
     ``,
     `Event log:`,
-    ...entry.events.map((e) => `  [${e.status}] ${e.step} — ${e.humanMessage}`),
+    ...entry.events.map((e) => `  [${e.status}] ${e.step} - ${e.humanMessage}`),
     ``,
   ];
   return lines.join('\n');

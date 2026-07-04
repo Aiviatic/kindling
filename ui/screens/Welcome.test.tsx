@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act, fireEvent, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act, fireEvent, within, waitFor } from '@testing-library/react';
 import { Phase, Status, StepId, type KindlingEvent } from '../../engine/contract';
 import type { EventSourceLike } from '../lib/events';
 import { pins } from '../../engine/pins';
@@ -47,6 +47,13 @@ const presentClaude = { id: 'claude-code', name: 'Claude Code', bin: 'claude', p
 const absentCodex = { id: 'codex', name: 'Codex', bin: 'codex', pkg: '@openai/codex', present: false };
 
 describe('<Welcome>', () => {
+  // The geo pre-fill (best-effort) fires on mount. Default to a rejecting fetch so it degrades
+  // silently and NEVER makes a real network call in tests; individual tests override as needed.
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('no network in tests'); }));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   it('celebrates readiness and shows the pinned BMad version chip', () => {
     renderWelcome();
     expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
@@ -148,14 +155,67 @@ describe('<Welcome>', () => {
     expect(screen.queryByTestId('cli-missing')).toBeNull();
   });
 
+  it('#9: tells the user the install is complete and they can close the browser tab', () => {
+    renderWelcome();
+    expect(screen.getByText(/close this browser tab/i)).toBeInTheDocument();
+    // Celebratory, not an error: still under the "You're ready" heading, no alert role.
+    expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
+  });
+
+  it('opt-in form collects first name, last name, email, city, and state (all optional)', () => {
+    renderWelcome();
+    expect(screen.getByLabelText('First name (optional)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Last name (optional)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email (optional)')).toBeInTheDocument();
+    expect(screen.getByLabelText('City (optional)')).toBeInTheDocument();
+    expect(screen.getByLabelText('State (optional)')).toBeInTheDocument();
+  });
+
   it('opt-in is consent-first: disabled until an email is typed, then acks quietly (5.2)', () => {
     renderWelcome();
     const submit = screen.getByRole('button', { name: 'Keep me posted' });
     expect(submit).toBeDisabled(); // skipping is always valid; nothing to capture yet
+    fireEvent.change(screen.getByLabelText('First name (optional)'), { target: { value: 'Ada' } });
+    expect(submit).toBeDisabled(); // still nothing to capture — email is the identity
     fireEvent.change(screen.getByLabelText('Email (optional)'), { target: { value: 'a@b.com' } });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
     // Endpoint is unconfigured in tests → graceful no-op, but the user still gets a calm thanks.
     expect(screen.getByText(/we'll be in touch/i)).toBeInTheDocument();
+  });
+
+  it('geo pre-fill: a successful IP lookup fills City + State the user has not typed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => ({ city: 'Austin', region: 'Texas' }) })),
+    );
+    renderWelcome();
+    expect(await screen.findByDisplayValue('Austin')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Texas')).toBeInTheDocument();
+  });
+
+  it('geo pre-fill never clobbers a value the user already typed into City', async () => {
+    let resolve!: (v: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const pending = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((r) => {
+      resolve = r;
+    });
+    vi.stubGlobal('fetch', vi.fn(() => pending));
+    renderWelcome();
+    fireEvent.change(screen.getByLabelText('City (optional)'), { target: { value: 'Portland' } });
+    await act(async () => {
+      resolve({ ok: true, json: async () => ({ city: 'Austin', region: 'Texas' }) });
+    });
+    // State was untouched, so it fills; City keeps the user's typed value.
+    await waitFor(() =>
+      expect((screen.getByLabelText('State (optional)') as HTMLInputElement).value).toBe('Texas'),
+    );
+    expect((screen.getByLabelText('City (optional)') as HTMLInputElement).value).toBe('Portland');
+  });
+
+  it('geo pre-fill degrades silently when fetch is unavailable (no throw, fields stay empty)', () => {
+    vi.stubGlobal('fetch', undefined);
+    expect(() => renderWelcome()).not.toThrow();
+    expect((screen.getByLabelText('City (optional)') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('State (optional)') as HTMLInputElement).value).toBe('');
   });
 });

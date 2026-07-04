@@ -25,7 +25,7 @@ export const FALLBACK_IDES: IdeOption[] = [
 ];
 
 export const DEGRADED_MESSAGE =
-  "We couldn't read the IDE list right now — you can still continue with the default and set your IDE later.";
+  "We couldn't read the IDE list right now, you can still continue with the default and set your IDE later.";
 
 // Parse + validate the catalog YAML. Throws on anything that isn't a non-empty list of
 // {id, name} entries, so loadIdeCatalog can fall back. Pure (no I/O).

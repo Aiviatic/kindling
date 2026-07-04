@@ -10,5 +10,5 @@ import type { Pins } from './contract';
 export const pins: Readonly<Pins> = Object.freeze({
   node: '24.16.0',
   bmad: '6.9.0', // frozen for the Cohort #1 cycle (matches this repo's BMad install; tools + install flags verified vs the real 6.9.0 CLI 2026-07-02); bump between cohorts
-  kindling: '0.1.1',
+  kindling: '0.1.2',
 });

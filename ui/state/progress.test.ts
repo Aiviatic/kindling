@@ -89,7 +89,7 @@ describe('slow-step activity', () => {
 describe('valueText (accessible, word-bearing)', () => {
   it('describes the working step with percent', () => {
     expect(valueText([step(StepId.InstallBmad, Status.Working, 'Installing BMad…')])).toBe(
-      '0% — Installing BMad…',
+      '0% - Installing BMad…',
     );
   });
 

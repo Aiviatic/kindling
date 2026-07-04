@@ -51,6 +51,13 @@ export interface BmadInstallOptions {
    */
   npxCommand?: string;
   /**
+   * Args prepended to the exec argv, before the `bmad-method@<tag>` spec. Default `[]`. On Windows
+   * `npxCommand` is the provisioned `node` and this carries `[npxCliPath(node)]`, so the effective
+   * invocation is `node npx-cli.js bmad-method@<tag> …` — the shell:false-safe equivalent of the
+   * bare `npx.cmd` shim (which spawn can't find by bare name on Windows). Empty on macOS/Linux.
+   */
+  npxPrefixArgs?: string[];
+  /**
    * Idempotent re-run (2.7): is BMad already installed in this project? When true, the install
    * runs with `--action update` (update in place) instead of a fresh install. Default detects a
    * `_bmad` dir under config.projectDir; injectable for tests.
@@ -112,16 +119,36 @@ export async function runBmadInstall(opts: BmadInstallOptions): Promise<BmadInst
     }
     // Compose inside the try so a composition error (e.g. comma in a module name) still
     // reaches a terminal Failed event.
-    const args = [`bmad-method@${versionTag}`, ...composeInstallArgs(opts.config, action)];
+    // On Windows npxPrefixArgs is `[npxCliPath(node)]` and npx is the provisioned node, so the
+    // effective invocation is `node npx-cli.js bmad-method@<tag> …` (shell:false-safe). Empty elsewhere.
+    const args = [
+      ...(opts.npxPrefixArgs ?? []),
+      `bmad-method@${versionTag}`,
+      ...composeInstallArgs(opts.config, action),
+    ];
     result = await exec(npx, args);
   } catch (err) {
-    // spawn error (e.g. npx not found) or composition error — surface a terminal failure, then rethrow.
-    emit(Status.Failed, errorMessages[ErrorCode.BmadInstallFailed], 'error', ErrorCode.BmadInstallFailed);
+    // spawn error (e.g. npx not found) or composition error — surface a terminal failure with the
+    // real error message appended (so a Windows ENOENT isn't a blank "details below"), then rethrow.
+    const detail = err instanceof Error ? err.message : String(err);
+    emit(
+      Status.Failed,
+      `${errorMessages[ErrorCode.BmadInstallFailed]} (${detail})`,
+      'error',
+      ErrorCode.BmadInstallFailed,
+    );
     throw err;
   }
 
   if (result.code !== 0) {
-    emit(Status.Failed, errorMessages[ErrorCode.BmadInstallFailed], 'error', ErrorCode.BmadInstallFailed);
+    // Surface a truncated tail of the child's stderr (fall back to stdout) so the failure carries
+    // the actual npx/bmad error instead of a generic message with nothing behind it.
+    const raw = (result.stderr.trim() ? result.stderr : result.stdout).trim();
+    const detail = raw.slice(-600).trim();
+    const humanMessage = detail
+      ? `${errorMessages[ErrorCode.BmadInstallFailed]}\n\nDetails:\n${detail}`
+      : errorMessages[ErrorCode.BmadInstallFailed];
+    emit(Status.Failed, humanMessage, 'error', ErrorCode.BmadInstallFailed);
     return { ok: false, bmadVersion: versionTag };
   }
 

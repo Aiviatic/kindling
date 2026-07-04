@@ -5,6 +5,9 @@ import { Phase, StepId, Status, type Config, type KindlingEvent } from './contra
 import type { ValidationSummary } from './validation-summary';
 import type { SelfCheckOptions } from './self-check';
 import type { FailureLogEntry } from './log';
+import { npxCliPath, npmCliPath } from './orchestrate/launch';
+import type { BmadInstallOptions } from './orchestrate/bmad-install';
+import type { AgentCliOptions } from './orchestrate/agent-cli';
 
 function config(): Config {
   return {
@@ -120,6 +123,42 @@ describe('Engine orchestration', () => {
     const result = await new Engine(config(), new EngineEmitter(), missing).start();
     expect(result.ok).toBe(false);
     expect(result.failedStep).toBe(StepId.ProvisionGit);
+  });
+
+  it('Windows: routes the BMad install through node + npx-cli.js (no bare npx.cmd)', async () => {
+    const runBmadInstall = vi.fn(async (_opts: BmadInstallOptions) => ({ ok: true, bmadVersion: '6.1.2' }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'win32', runBmadInstall }));
+    await engine.start();
+
+    expect(runBmadInstall).toHaveBeenCalledOnce();
+    const opts = runBmadInstall.mock.calls[0][0];
+    expect(opts.npxCommand).toBe(process.execPath);
+    expect(opts.npxPrefixArgs).toEqual([npxCliPath(process.execPath)]);
+  });
+
+  it('Windows: routes the agent-CLI install through node + npm-cli.js (no bare npm.cmd)', async () => {
+    const installAgentCli = vi.fn(async (_opts: AgentCliOptions) => ({ ok: true, installed: [], skipped: [], failed: [] }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'win32', installAgentCli }));
+    await engine.start();
+
+    expect(installAgentCli).toHaveBeenCalledOnce();
+    const opts = installAgentCli.mock.calls[0][0];
+    expect(opts.npmCommand).toBe(process.execPath);
+    expect(opts.npmPrefixArgs).toEqual([npmCliPath(process.execPath)]);
+  });
+
+  it('non-Windows: passes no npx/npm Windows wiring (macOS/Linux behavior unchanged)', async () => {
+    const runBmadInstall = vi.fn(async (_opts: BmadInstallOptions) => ({ ok: true, bmadVersion: '6.1.2' }));
+    const installAgentCli = vi.fn(async (_opts: AgentCliOptions) => ({ ok: true, installed: [], skipped: [], failed: [] }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'linux', runBmadInstall, installAgentCli }));
+    await engine.start();
+
+    const bmadOpts = runBmadInstall.mock.calls[0][0];
+    expect(bmadOpts.npxCommand).toBeUndefined();
+    expect(bmadOpts.npxPrefixArgs).toBeUndefined();
+    const cliOpts = installAgentCli.mock.calls[0][0];
+    expect(cliOpts.npmCommand).toBeUndefined();
+    expect(cliOpts.npmPrefixArgs).toBeUndefined();
   });
 
   it('stops at a failing step, writes the failure log, and does not run later steps', async () => {

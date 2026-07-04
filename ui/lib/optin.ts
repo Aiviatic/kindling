@@ -3,14 +3,21 @@ import { OPTIN_ENDPOINT } from '../config/optin';
 
 export interface OptInInput {
   email: string;
-  /** Optional rough location (FR-20) — city/region, never required. */
-  location?: string;
+  /** Optional identity fields (FR-20) — never required. */
+  firstName?: string;
+  lastName?: string;
+  /** Optional rough location (FR-20) — city + state, never required. */
+  city?: string;
+  state?: string;
 }
 
 /** Consent-first payload posted to the lead-capture endpoint (the server stamps the timestamp). */
 export interface OptInPayload {
   email: string;
-  location?: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  state?: string;
   consent: true;
   /** Install attribution (FR — who installed): the cohort's pinned BMad version. */
   attribution: { bmad: string };
@@ -44,10 +51,16 @@ export async function submitOptIn(
   const endpoint = deps.endpoint ?? OPTIN_ENDPOINT;
   if (!endpoint) return 'skipped';
 
-  const location = input.location?.trim();
+  const firstName = input.firstName?.trim();
+  const lastName = input.lastName?.trim();
+  const city = input.city?.trim();
+  const state = input.state?.trim();
   const payload: OptInPayload = {
     email,
-    ...(location ? { location } : {}),
+    ...(firstName ? { firstName } : {}),
+    ...(lastName ? { lastName } : {}),
+    ...(city ? { city } : {}),
+    ...(state ? { state } : {}),
     consent: true,
     attribution: { bmad: pins.bmad },
   };

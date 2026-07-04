@@ -13,7 +13,7 @@ export function Intro({ onContinue }: IntroProps) {
       <h1 id="intro-h">Let's get your project set up.</h1>
       <p className="lede">
         In a few minutes you'll have a fresh project, wired up with BMad and your AI coding
-        tools — no terminal, nothing to install by hand. We'll handle the rest.
+        tools, no terminal, nothing to install by hand. We'll handle the rest.
       </p>
       <div className="screen-actions">
         <Button variant="primary" onClick={onContinue}>

@@ -30,7 +30,7 @@ describe('<Configure>', () => {
     expect(onStart).toHaveBeenCalledTimes(1);
     const cfg = onStart.mock.calls[0][0];
     expect(cfg.ides).toEqual(['claude-code']); // the default IDE
-    expect(cfg.modules).toEqual(['bmm']);
+    expect(cfg.modules).toEqual(['bmm', 'cis']); // bmm + cis are checked by default
     expect(cfg.projectName).toBeTruthy();
     // NFR3: the literal never-touch-Customize path never emits an update-to-latest target.
     expect(cfg.bmadTarget).toBeUndefined();
@@ -58,14 +58,18 @@ describe('<Configure>', () => {
 
   it('blocks Start if every module is deselected (--modules must be non-empty)', () => {
     renderConfigure();
-    fireEvent.click(screen.getByRole('checkbox', { name: /BMad Method/ })); // deselect the only default module
+    fireEvent.click(screen.getByRole('checkbox', { name: /BMad Method/ })); // deselect bmm
+    fireEvent.click(screen.getByRole('checkbox', { name: /Creative Studio/ })); // deselect cis
     expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
   });
 
-  it('shows the project location as a first-class control with the default pill', () => {
+  it('shows the project folder + name as first-class controls with a composed-path preview', () => {
     renderConfigure();
-    expect(screen.getByText(/~\/kindling-project/)).toBeInTheDocument();
-    expect(screen.getByText('✓ Default location')).toBeInTheDocument();
+    // Folder and name are editable, always-visible fields pre-filled with the friendly defaults…
+    expect(screen.getByLabelText('Where your projects go')).toHaveValue('~/My Projects');
+    expect(screen.getByLabelText('Project name')).toHaveValue('My Project');
+    // …and the install path is the live composition of the two.
+    expect(screen.getByText('📁 ~/My Projects/My Project')).toBeInTheDocument();
   });
 
   it('keeps a selected non-recommended IDE visible after collapsing "Show all"', () => {
@@ -141,13 +145,13 @@ describe('<Configure>', () => {
     expect(onStart.mock.calls[0][0].installCli).toEqual(['claude-code', 'codex']);
   });
 
-  it('reveals directory/name overrides only when Customize is expanded', () => {
+  it('shows folder + name as always-visible first-class fields; no Customize when the gate is off', () => {
     renderConfigure();
-    expect(screen.queryByLabelText('Project name')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Customize/ }));
-    const panel = screen.getByLabelText('Project name');
-    expect(panel).toBeInTheDocument();
-    within(document.body).getByLabelText('Where your project goes');
+    // Folder + name are first-class now — visible up front, no disclosure needed.
+    expect(screen.getByLabelText('Project name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Where your projects go')).toBeInTheDocument();
+    // The Customize disclosure only renders under the Epic-7 gate (off by default) — so it's absent.
+    expect(screen.queryByRole('button', { name: /Customize/ })).toBeNull();
   });
 });
 
@@ -176,7 +180,9 @@ describe('<Configure> — 7.2 update-to-latest affordance', () => {
     const inspect = vi.fn(async () => detectedResult);
     // enableBmadUpdate omitted ⇒ defaults to the build-time constant (false for the cohort window).
     render(<Configure catalog={catalog} pins={pins} onStart={onStart} inspect={inspect} debounceMs={0} />);
-    openCustomize();
+    // Gate off ⇒ there is no Customize disclosure at all (it's gated behind enableBmadUpdate), so
+    // there is nothing to open and the probe can never be reached.
+    expect(screen.queryByRole('button', { name: /Customize/ })).toBeNull();
     // Give any (wrongly-scheduled) debounce a chance — it must NOT fire when the gate is off.
     await new Promise((r) => setTimeout(r, 10));
     expect(inspect).not.toHaveBeenCalled();
@@ -255,7 +261,7 @@ describe('<Configure> — 7.2 update-to-latest affordance', () => {
     // Now EDIT the dir and immediately Start (mirror the real mid-debounce edit-then-Start race).
     // The dir-change effect must have synchronously dropped `detected` + `updateToLatest`, so the
     // opt-in cannot carry over to a dir that was never freshly detected.
-    fireEvent.change(within(document.body).getByLabelText('Where your project goes'), {
+    fireEvent.change(within(document.body).getByLabelText('Where your projects go'), {
       target: { value: '/some-other-dir' },
     });
     screen.getByRole('button', { name: 'Start' }).click();
@@ -265,8 +271,9 @@ describe('<Configure> — 7.2 update-to-latest affordance', () => {
   it('HIGH regression: the opt-in never re-arms pre-checked — a newly-detected dir B starts unchecked', async () => {
     const onStart = vi.fn();
     // dir A + dir B are existing projects; a middle non-project dir has no `_bmad`.
+    // The probe fires on the COMPOSED dir (<folder>/<name>), so key off the folder prefix.
     const inspect = vi.fn(async (dir: string): Promise<InspectResult> =>
-      dir === '/no-project'
+      dir.startsWith('/no-project')
         ? { isKindlingProject: false, installedBmadVersion: null }
         : { isKindlingProject: true, installedBmadVersion: '6.9.0' },
     );
@@ -274,7 +281,7 @@ describe('<Configure> — 7.2 update-to-latest affordance', () => {
       <Configure catalog={catalog} pins={pins} onStart={onStart} inspect={inspect} enableBmadUpdate debounceMs={0} />,
     );
     openCustomize();
-    const dirField = within(document.body).getByLabelText('Where your project goes');
+    const dirField = within(document.body).getByLabelText('Where your projects go');
     // Dir A detected → check the opt-in.
     const optInA = await screen.findByRole('checkbox', { name: /Update this existing project/ });
     fireEvent.click(optInA);
@@ -306,7 +313,7 @@ describe('<Configure> — 7.2 update-to-latest affordance', () => {
     );
     openCustomize();
     await waitFor(() => expect(inspect).toHaveBeenCalledTimes(1)); // probe #1 (default dir)
-    fireEvent.change(within(document.body).getByLabelText('Where your project goes'), {
+    fireEvent.change(within(document.body).getByLabelText('Where your projects go'), {
       target: { value: '/superseding-dir' },
     });
     await waitFor(() => expect(inspect).toHaveBeenCalledTimes(2)); // probe #2 (new dir)

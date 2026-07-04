@@ -121,7 +121,7 @@ describe('runBmadInstall', () => {
     expect(result).toEqual({ ok: true, bmadVersion: 'latest' });
   });
 
-  it('reports failure (no success) on a non-zero exit', async () => {
+  it('reports failure (no success) on a non-zero exit, surfacing the stderr detail', async () => {
     const emitter = new EngineEmitter();
     const events = collect(emitter);
 
@@ -132,6 +132,48 @@ describe('runBmadInstall', () => {
     expect(statuses).toEqual([Status.Working, Status.Failed]);
     expect(statuses).not.toContain(Status.Done);
     expect(statuses.filter((s) => s === Status.Failed)).toHaveLength(1);
+    // The real child stderr is surfaced (no more blank "details below") — see the fail fixture.
+    const failed = events.find((e) => e.status === Status.Failed)!;
+    expect(failed.humanMessage).toContain('boom');
+  });
+
+  it('falls back to stdout in the detail when stderr is empty on a non-zero exit', async () => {
+    const emitter = new EngineEmitter();
+    const events = collect(emitter);
+    const result = await runBmadInstall({
+      config: config(),
+      emitter,
+      exec: async () => ({ code: 1, stdout: 'stdout diagnostic', stderr: '' }),
+    });
+    expect(result.ok).toBe(false);
+    expect(events.find((e) => e.status === Status.Failed)!.humanMessage).toContain('stdout diagnostic');
+  });
+
+  it('truncates a long stderr detail to the last ~600 chars', async () => {
+    const emitter = new EngineEmitter();
+    const events = collect(emitter);
+    const long = `HEAD-${'x'.repeat(2000)}-TAIL`;
+    await runBmadInstall({ config: config(), emitter, exec: async () => ({ code: 1, stdout: '', stderr: long }) });
+    const msg = events.find((e) => e.status === Status.Failed)!.humanMessage;
+    expect(msg).toContain('TAIL'); // keeps the tail (most-recent output)
+    expect(msg).not.toContain('HEAD'); // drops the head
+    expect(msg.length).toBeLessThan(long.length);
+  });
+
+  it('threads npxPrefixArgs before the package spec (Windows node npx-cli.js wiring)', async () => {
+    const exec = vi.fn(async (_cmd: string, _args: string[]) => ok);
+    await runBmadInstall({
+      config: config(),
+      emitter: new EngineEmitter(),
+      exec,
+      npxCommand: '/abs/node',
+      npxPrefixArgs: ['/abs/node_modules/npm/bin/npx-cli.js'],
+    });
+    const [cmd, args] = exec.mock.calls[0];
+    expect(cmd).toBe('/abs/node');
+    expect(args[0]).toBe('/abs/node_modules/npm/bin/npx-cli.js'); // prefix comes first
+    expect(args[1]).toBe('bmad-method@6.1.2'); // then the package spec, unchanged
+    expect(args).toContain('install');
   });
 
   it('fails fast with a clear message (no exec) when the BMad pin is still a TODO placeholder', async () => {
@@ -161,6 +203,8 @@ describe('runBmadInstall', () => {
     const statuses = events.map((e) => e.status);
     expect(statuses[0]).toBe(Status.Working);
     expect(statuses[statuses.length - 1]).toBe(Status.Failed);
+    // The spawn error message is surfaced in the Failed event (Windows ENOENT is no longer blank).
+    expect(events[events.length - 1].humanMessage).toContain('spawn npx ENOENT');
   });
 
   it('honors a custom npxCommand (Epic 2 Windows seam)', async () => {

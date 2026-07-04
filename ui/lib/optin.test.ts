@@ -30,26 +30,36 @@ describe('submitOptIn (consent-first, never throws)', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('posts a consent-first payload with attribution + optional location', async () => {
+  it('posts a consent-first payload with attribution + optional identity/location fields', async () => {
     const { calls, fetchImpl } = recorder(true);
     const result = await submitOptIn(
-      { email: ' a@b.com ', location: ' Berlin ' },
+      { email: ' a@b.com ', firstName: ' Ada ', lastName: ' Lovelace ', city: ' Berlin ', state: ' BE ' },
       { endpoint: ENDPOINT, fetchImpl },
     );
     expect(result).toBe('sent');
     expect(calls[0].url).toBe(ENDPOINT);
     expect(JSON.parse(calls[0].body)).toEqual({
       email: 'a@b.com',
-      location: 'Berlin',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      city: 'Berlin',
+      state: 'BE',
       consent: true,
       attribution: { bmad: pins.bmad },
     });
   });
 
-  it('omits location when blank', async () => {
+  it('omits blank identity/location fields', async () => {
     const { calls, fetchImpl } = recorder(true);
-    await submitOptIn({ email: 'a@b.com', location: '  ' }, { endpoint: ENDPOINT, fetchImpl });
-    expect(JSON.parse(calls[0].body).location).toBeUndefined();
+    await submitOptIn(
+      { email: 'a@b.com', firstName: '  ', lastName: '', city: '  ', state: '' },
+      { endpoint: ENDPOINT, fetchImpl },
+    );
+    const body = JSON.parse(calls[0].body);
+    expect(body.firstName).toBeUndefined();
+    expect(body.lastName).toBeUndefined();
+    expect(body.city).toBeUndefined();
+    expect(body.state).toBeUndefined();
   });
 
   it('returns error (never throws) on a non-ok response or a network failure', async () => {

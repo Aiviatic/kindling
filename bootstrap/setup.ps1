@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 
 $KindlingNodeVersion = '24.16.0'  # == pins.node
-$KindlingVersion     = '0.1.1'    # == pins.kindling
+$KindlingVersion     = '0.1.2'    # == pins.kindling
 $NodeFloorMajor      = 20
 
 # --- Inline helpers (were bootstrap/lib/common.ps1; inlined for the file-less delivery) ----------
@@ -39,19 +39,24 @@ Say " - This window already runs with -ExecutionPolicy Bypass for THIS process o
 # $NodeExe stays $null when a system Node is reused (launch via PATH); the portable-install path
 # sets it to the absolute node.exe so the launch never depends on PATH (clean-runtime rule, AR6).
 $NodeExe = $null
+$arch     = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+$distName = "node-v$KindlingNodeVersion-win-$arch"
+$nodeRoot = Join-Path $env:LOCALAPPDATA 'kindling\node'
+$portableNode = Join-Path $nodeRoot "$distName\node.exe"
 if (Test-NodeOk $NodeFloorMajor) {
   Say "Node is already installed - reusing it."
+} elseif (Test-Path $portableNode) {
+  # Portable Node from a previous run is already extracted here - reuse it, don't re-download the
+  # 30 MB. (The portable dir is never persisted to PATH, so Test-NodeOk alone can't see it.)
+  Say "Node is already installed - reusing it."
+  $NodeExe = $portableNode
 } else {
   Say "Setting up Node - the engine your project runs on. This downloads about 30 MB, one time."
   # Portable Node: download the pinned Windows zip from nodejs.org, VERIFY its SHA-256 against Node's
   # published SHASUMS256.txt before touching it, extract, and point the launch at the absolute
   # node.exe (clean-runtime rule AR6 — never rely on a mutated PATH). Mirrors node-windows.ts.
-  # NOTE: newly implemented; validate on real Windows (proxy/TLS-interception, extract, non-admin exec).
   $ProgressPreference = 'SilentlyContinue'  # a visible progress bar makes Invoke-WebRequest ~10x slower
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  $arch     = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
-  $distName = "node-v$KindlingNodeVersion-win-$arch"
-  $nodeRoot = Join-Path $env:LOCALAPPDATA 'kindling\node'
   $zipPath  = Join-Path $nodeRoot "$distName.zip"
   $baseUrl  = "https://nodejs.org/dist/v$KindlingNodeVersion"
   New-Item -ItemType Directory -Force -Path $nodeRoot | Out-Null
@@ -77,8 +82,14 @@ if (Test-NodeOk $NodeFloorMajor) {
 # $GitCmdDir stays $null when a system Git is reused (already on PATH); the portable path sets it to
 # MinGit's cmd\ dir, prepended to PATH at launch so the engine can `git init` the new project.
 $GitCmdDir = $null
+$gitRoot = Join-Path $env:LOCALAPPDATA 'kindling\git'
+$portableGitCmd = Join-Path $gitRoot 'cmd'
 if (Test-Cmd 'git') {
   Say "Git is already installed - reusing it."
+} elseif (Test-Path (Join-Path $portableGitCmd 'git.exe')) {
+  # Portable MinGit from a previous run is already extracted here - reuse it, don't re-download.
+  Say "Git is already installed - reusing it."
+  $GitCmdDir = $portableGitCmd
 } else {
   Say "Setting up Git - it keeps the history of your project. This downloads about 35 MB, one time."
   # Portable MinGit (the ZIP build made for bundling): download the pinned release, VERIFY its SHA-256
@@ -87,7 +98,6 @@ if (Test-Cmd 'git') {
   $ProgressPreference = 'SilentlyContinue'
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   $gitVersion = '2.55.0.2'
-  $gitRoot = Join-Path $env:LOCALAPPDATA 'kindling\git'
   $gitZip  = Join-Path $env:LOCALAPPDATA 'kindling\mingit.zip'
   $gitUrl  = "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.2/MinGit-$gitVersion-64-bit.zip"
   $gitSha  = 'e3ea2944cea4b3fabcd69c7c1669ef69b1b66c05ac7806d81224d0abad2dec31'
@@ -102,7 +112,7 @@ if (Test-Cmd 'git') {
   } catch {
     throw "Couldn't set up Git ($($_.Exception.Message)). Check your internet connection, then run this again - it's safe to re-run."
   }
-  $GitCmdDir = Join-Path $gitRoot 'cmd'
+  $GitCmdDir = $portableGitCmd
   if (-not (Test-Path (Join-Path $GitCmdDir 'git.exe'))) { throw "Git was downloaded but git.exe wasn't found at $GitCmdDir." }
   Say "Git is ready."
 }
