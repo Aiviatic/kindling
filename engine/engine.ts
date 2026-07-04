@@ -172,6 +172,9 @@ export class Engine implements EngineCommands<EngineRunResult> {
           await this.deps.installAgentCli({
             config: this.config,
             emitter: this.emitter,
+            // Windows: the idempotent-skip probe must go through `cmd /c <bin> --version` so the
+            // installed `claude.cmd` shim is detected (Node won't spawn `.cmd` with shell:false).
+            isWindows: this.deps.platform === 'win32',
             ...(this.deps.platform === 'win32'
               ? { npmCommand: process.execPath, npmPrefixArgs: [npmCliPath(process.execPath)] }
               : {}),

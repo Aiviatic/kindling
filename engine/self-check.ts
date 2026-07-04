@@ -1,7 +1,7 @@
 import { release } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { exec as defaultExec, type ExecResult } from './exec';
-import { probeVersion } from './probe';
+import { probeVersion, probeCliVersion } from './probe';
 import { readInstalledBmadVersion as defaultReadInstalledBmadVersion } from './bmad-manifest';
 import type { EngineEmitter } from './emitter';
 import { Phase, StepId, Status, ErrorCode, type Level } from './contract';
@@ -35,13 +35,6 @@ export interface SelfCheckOptions {
   exec?: (cmd: string, args: string[]) => Promise<ExecResult>;
   now?: () => string;
   /**
-   * Resolve a CLI bin to a spawnable form before the presence probe — the probe equivalent of
-   * agent-cli.ts's `resolveBin` seam. Default: identity. On Windows the installed CLI is a
-   * `claude.cmd` shim and `exec` is `shell:false`, so a bare-bin probe would wrongly report
-   * "absent"; the Epic-2 Windows wiring / dress rehearsal plugs the resolved shim path in here.
-   */
-  resolveBin?: (bin: string) => string;
-  /**
    * Read the ACTUAL installed BMad version from the project manifest (FR26). Injectable so unit
    * tests never touch a real fs/manifest (mirrors the `bmadAlreadyInstalled`/`exec` seams).
    * Default: the node-side `readInstalledBmadVersion` helper. Returns `null` on any read/parse
@@ -57,7 +50,6 @@ export interface SelfCheckOptions {
 export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSummary> {
   const exec = opts.exec ?? defaultExec;
   const now = opts.now ?? (() => new Date().toISOString());
-  const resolveBin = opts.resolveBin ?? ((bin: string) => bin);
   const readInstalledBmadVersion =
     opts.readInstalledBmadVersion ?? defaultReadInstalledBmadVersion;
   const platform = opts.platform ?? {
@@ -95,12 +87,14 @@ export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSu
   const gitVersion = await probeVersion(exec, opts.git ?? 'git');
   const nodeMajor = parseMajor(nodeVersion);
 
-  // Probe each requested eligible CLI for presence via the SAME probe as node/git (reuse — no
-  // hand-rolled check), through the resolveBin seam (Windows shim). Non-blocking (AC-6): the
-  // result feeds only the `cli` field, never `success`.
+  // Probe each requested eligible CLI for presence. Node/git use `probeVersion`; the agent CLIs use
+  // `probeCliVersion`, which on Windows runs `cmd /c <bin> --version` so the `claude.cmd` shim (which
+  // Node won't spawn with shell:false) is reachable — a bare-bin probe there would wrongly report
+  // "absent". Non-blocking (AC-6): the result feeds only the `cli` field, never `success`.
+  const isWindows = platform.os === 'win32';
   const cli: CliPresence[] = [];
   for (const c of opts.agentClis ?? []) {
-    const present = (await probeVersion(exec, resolveBin(c.bin))) !== null;
+    const present = (await probeCliVersion(exec, c.bin, isWindows)) !== null;
     cli.push({ id: c.id, name: c.name, bin: c.bin, pkg: c.pkg, present });
   }
 

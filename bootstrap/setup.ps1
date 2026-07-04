@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 
 $KindlingNodeVersion = '24.16.0'  # == pins.node
-$KindlingVersion     = '0.1.2'    # == pins.kindling
+$KindlingVersion     = '0.1.3'    # == pins.kindling
 $NodeFloorMajor      = 20
 
 # --- Inline helpers (were bootstrap/lib/common.ps1; inlined for the file-less delivery) ----------
@@ -116,6 +116,23 @@ if (Test-Cmd 'git') {
   if (-not (Test-Path (Join-Path $GitCmdDir 'git.exe'))) { throw "Git was downloaded but git.exe wasn't found at $GitCmdDir." }
   Say "Git is ready."
 }
+
+# --- Persist the portable runtime on the USER PATH ---------------------------
+# So the tools actually WORK in a normal terminal afterward (not just during this run): node/npm/npx
+# live in the Node dir, git in MinGit's cmd\, and any globally-installed agent CLI (claude/codex)
+# gets its shim written INTO the Node dir (npm's global prefix) - so putting the Node dir on PATH
+# covers those too. Only the PORTABLE paths need this; a reused system Node/Git is already on PATH.
+# User-scope (no admin), idempotent, prepended so the pinned runtime wins. Future terminals pick it up.
+function Add-UserPath([string]$dir) {
+  if (-not $dir -or -not (Test-Path $dir)) { return }
+  $cur = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $parts = @(($cur -split ';') | Where-Object { $_ -ne '' })
+  if ($parts -notcontains $dir) {
+    [Environment]::SetEnvironmentVariable('Path', ((@($dir) + $parts) -join ';'), 'User')
+  }
+}
+if ($NodeExe) { Add-UserPath (Split-Path $NodeExe) }
+if ($GitCmdDir) { Add-UserPath $GitCmdDir }
 
 # --- Launch Kindling (clean-runtime: absolute node when portable, else npx on PATH) -----------
 Say "Starting Kindling..."

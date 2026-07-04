@@ -216,38 +216,50 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               optIn();
             }}
           >
-            <TextInput
-              label="First name (optional)"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Ada"
-            />
-            <TextInput
-              label="Last name (optional)"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Lovelace"
-            />
-            <TextInput
-              label="Email (optional)"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
-            <TextInput
-              label="City (optional)"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City"
-            />
-            <TextInput
-              label="State (optional)"
-              value={state_}
-              onChange={(e) => setState_(e.target.value)}
-              placeholder="State"
-            />
-            <Button type="submit" variant="ghost" disabled={email.trim() === ''}>
+            <div className="optin-row">
+              <TextInput
+                label="First name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Ada"
+              />
+              <TextInput
+                label="Last name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Lovelace"
+              />
+            </div>
+            <div className="optin-row">
+              <TextInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <div className="optin-row">
+              <TextInput
+                label="City (optional)"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="City"
+              />
+              <TextInput
+                label="State (optional)"
+                value={state_}
+                onChange={(e) => setState_(e.target.value)}
+                placeholder="State"
+              />
+            </div>
+            <Button
+              type="submit"
+              variant="ghost"
+              disabled={
+                firstName.trim() === '' || lastName.trim() === '' || email.trim() === ''
+              }
+            >
               Keep me posted
             </Button>
           </form>

@@ -347,6 +347,12 @@ fieldset.field {
   color: var(--color-text-secondary);
 }
 
+/* The "read more" escape link: on-brand flame accent so it reads clearly as a link
+   against the dark surface (plain default link color was too low-contrast). */
+.start-note a {
+  color: var(--color-accent);
+}
+
 .versions {
   width: 100%;
   border-collapse: collapse;
@@ -403,6 +409,19 @@ fieldset.field {
   gap: var(--space-3);
   align-items: flex-start;
   margin-top: var(--space-3);
+}
+
+/* A side-by-side pair of fields (First/Last, City/State) — or a single full-width
+   field (Email). Children flex to equal width and wrap gracefully on narrow widths. */
+.optin-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.optin-row > .field {
+  flex: 1;
+  min-width: 0;
 }
 
 .start-error {

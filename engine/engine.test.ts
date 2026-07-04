@@ -145,6 +145,8 @@ describe('Engine orchestration', () => {
     const opts = installAgentCli.mock.calls[0][0];
     expect(opts.npmCommand).toBe(process.execPath);
     expect(opts.npmPrefixArgs).toEqual([npmCliPath(process.execPath)]);
+    // Windows also routes the idempotent-skip probe through `cmd /c <bin> --version`.
+    expect(opts.isWindows).toBe(true);
   });
 
   it('non-Windows: passes no npx/npm Windows wiring (macOS/Linux behavior unchanged)', async () => {
@@ -159,6 +161,7 @@ describe('Engine orchestration', () => {
     const cliOpts = installAgentCli.mock.calls[0][0];
     expect(cliOpts.npmCommand).toBeUndefined();
     expect(cliOpts.npmPrefixArgs).toBeUndefined();
+    expect(cliOpts.isWindows).toBe(false); // direct `<bin> --version` probe on macOS/Linux
   });
 
   it('stops at a failing step, writes the failure log, and does not run later steps', async () => {

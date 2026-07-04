@@ -139,19 +139,35 @@ describe('runSelfCheck', () => {
     expect(summary.success).toBe(true); // an absent CLI must NOT flip the verdict
   });
 
-  it('uses the resolveBin seam for the CLI probe (Windows shim; Story 6.2)', async () => {
+  it('probes the CLI through cmd.exe on Windows so the .cmd shim is detected (Story 6.2)', async () => {
+    // On Windows the installed CLI is a `claude.cmd` shim that Node won't spawn with shell:false;
+    // the self-check must run `cmd /c claude --version` (probeCliVersion) to reach it. A bare-bin
+    // probe would wrongly report the CLI absent even after a successful `npm install -g`.
+    const calls: Array<[string, string[]]> = [];
+    const exec = async (cmd: string, args: string[]): Promise<ExecResult> => {
+      calls.push([cmd, args]);
+      if (cmd === 'node') return { code: 0, stdout: 'v24.16.0', stderr: '' };
+      if (cmd === 'git') return { code: 0, stdout: 'git version 2.43.0', stderr: '' };
+      // The claude probe arrives as `cmd /c claude --version` on Windows — resolve it as present.
+      if (cmd === 'cmd' && args[0] === '/c' && args[1] === 'claude') {
+        return { code: 0, stdout: '1.2.3', stderr: '' };
+      }
+      return { code: 1, stdout: '', stderr: 'not found' };
+    };
+
     const summary = await runSelfCheck({
       scaffoldCreated: true,
       bmadInstalled: true,
       projectDir: '/tmp/proj',
       readInstalledBmadVersion: async () => null,
       emitter: new EngineEmitter(),
-      exec: fakeExec({ node: 'v24.16.0', git: 'git version 2.43.0', 'claude.cmd': '1.2.3' }),
+      exec,
       agentClis: [claudeDescriptor],
-      resolveBin: (bin) => `${bin}.cmd`,
-      platform,
+      platform: { os: 'win32', arch: 'x64', osVersion: '10.0.0' },
     });
-    expect(summary.cli[0].present).toBe(true); // probed the resolved shim, not the bare bin
+
+    expect(summary.cli[0].present).toBe(true); // detected via the cmd /c shim probe
+    expect(calls).toContainEqual(['cmd', ['/c', 'claude', '--version']]);
   });
 
   it('emits cli: [] when no CLI was requested (schema stability; Story 6.2)', async () => {

@@ -162,22 +162,29 @@ describe('<Welcome>', () => {
     expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
   });
 
-  it('opt-in form collects first name, last name, email, city, and state (all optional)', () => {
+  it('opt-in form collects first name, last name, email (required) plus city and state (optional)', () => {
     renderWelcome();
-    expect(screen.getByLabelText('First name (optional)')).toBeInTheDocument();
-    expect(screen.getByLabelText('Last name (optional)')).toBeInTheDocument();
-    expect(screen.getByLabelText('Email (optional)')).toBeInTheDocument();
+    // First/Last/Email are required now — their labels no longer carry "(optional)".
+    expect(screen.getByLabelText('First name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Last name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.queryByLabelText('First name (optional)')).toBeNull();
+    expect(screen.queryByLabelText('Last name (optional)')).toBeNull();
+    expect(screen.queryByLabelText('Email (optional)')).toBeNull();
+    // City/State stay optional and keep the "(optional)" suffix.
     expect(screen.getByLabelText('City (optional)')).toBeInTheDocument();
     expect(screen.getByLabelText('State (optional)')).toBeInTheDocument();
   });
 
-  it('opt-in is consent-first: disabled until an email is typed, then acks quietly (5.2)', () => {
+  it('opt-in is consent-first: disabled until first+last+email are filled, then acks quietly (5.2)', () => {
     renderWelcome();
     const submit = screen.getByRole('button', { name: 'Keep me posted' });
     expect(submit).toBeDisabled(); // skipping is always valid; nothing to capture yet
-    fireEvent.change(screen.getByLabelText('First name (optional)'), { target: { value: 'Ada' } });
-    expect(submit).toBeDisabled(); // still nothing to capture — email is the identity
-    fireEvent.change(screen.getByLabelText('Email (optional)'), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    expect(submit).toBeDisabled(); // last name + email still missing
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Lovelace' } });
+    expect(submit).toBeDisabled(); // email still missing — it's the identity
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'a@b.com' } });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
     // Endpoint is unconfigured in tests → graceful no-op, but the user still gets a calm thanks.

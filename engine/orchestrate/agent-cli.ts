@@ -3,7 +3,7 @@ import { exec as defaultExec, type ExecResult } from '../exec';
 import type { EngineEmitter } from '../emitter';
 import { Phase, StepId, Status, ErrorCode, type Level, type Config } from '../contract';
 import { agentCliMessages } from '../messages';
-import { probeVersion } from '../probe';
+import { probeCliVersion } from '../probe';
 
 /**
  * Explicit id → npm package table. The scope guard: only these two picked-tool ids are eligible
@@ -78,15 +78,13 @@ export interface AgentCliOptions {
    */
   npmPrefixArgs?: string[];
   /**
-   * Resolve an agent CLI's bin name to a spawnable form before the idempotent-skip probe. Default:
-   * identity. On Windows a global `npm install -g` writes a `claude.cmd`/`.ps1` shim (not a bare
-   * `claude` executable), and `exec` uses `shell:false` — so a bare bin can't be spawned there and
-   * `probeVersion` would wrongly report "absent" and reinstall on every run. This seam is the probe
-   * equivalent of `npmCommand`: the Epic-2 Windows wiring / dress rehearsal plugs the resolved shim
-   * path in here. Not over-plumbed in 6.1 (defaults to identity, exactly as `npmCommand` defaults
-   * to 'npm'). See deferred-work.md → agent-CLI Windows resolution.
+   * Whether the host is Windows. Default false. On Windows the idempotent-skip probe must run
+   * `cmd /c <bin> --version` (via `probeCliVersion`) because a global `npm install -g` writes a
+   * `claude.cmd` shim, not a bare `claude` executable, and `exec` uses `shell:false` — which Node
+   * refuses to use for `.cmd`, so a bare-bin probe would wrongly report "absent" and reinstall on
+   * every run. macOS/Linux keep the direct `<bin> --version`.
    */
-  resolveBin?: (bin: string) => string;
+  isWindows?: boolean;
   now?: () => string;
 }
 
@@ -109,7 +107,7 @@ export interface AgentCliOptions {
 export async function installAgentCli(opts: AgentCliOptions): Promise<AgentCliResult> {
   const exec = opts.exec ?? defaultExec;
   const npm = opts.npmCommand ?? 'npm';
-  const resolveBin = opts.resolveBin ?? ((bin: string) => bin);
+  const isWindows = opts.isWindows ?? false;
   const now = opts.now ?? (() => new Date().toISOString());
 
   const emit = (
@@ -141,8 +139,9 @@ export async function installAgentCli(opts: AgentCliOptions): Promise<AgentCliRe
   for (const { id, pkg, bin, name } of eligible) {
 
     // Idempotent skip: already present anywhere on the machine → don't reinstall (AC-2). Probe via
-    // the resolveBin seam so the Windows shim (claude.cmd) is reachable once wired (see JSDoc).
-    if ((await probeVersion(exec, resolveBin(bin))) !== null) {
+    // `probeCliVersion`, which on Windows runs `cmd /c <bin> --version` so the shim (claude.cmd) is
+    // reachable (Node won't spawn `.cmd` with shell:false) — otherwise it reinstalls on every run.
+    if ((await probeCliVersion(exec, bin, isWindows)) !== null) {
       emit(Status.Skipped, agentCliMessages.skipped(name));
       skipped.push(id);
       continue;

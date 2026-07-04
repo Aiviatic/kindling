@@ -198,18 +198,42 @@ describe('installAgentCli', () => {
     ]);
   });
 
-  it('probes through the resolveBin seam (Windows shim resolution)', async () => {
+  it('probes through cmd.exe on Windows (isWindows) so the .cmd shim is reachable', async () => {
     const exec = execFake();
     await installAgentCli({
       config: config({ installCli: ['claude-code'] }),
       emitter: new EngineEmitter(),
       exec,
-      resolveBin: (bin) => `/abs/${bin}.cmd`,
+      isWindows: true,
     });
-    // The idempotent-skip probe must spawn the RESOLVED bin, not the bare name (else the skip
-    // silently fails on Windows where `claude` is really `claude.cmd`).
-    const probeCall = exec.mock.calls.find(([, args]) => isProbe(args))!;
-    expect(probeCall[0]).toBe('/abs/claude.cmd');
+    // The idempotent-skip probe must run `cmd /c claude --version`, not a bare `claude` (which Node
+    // won't spawn with shell:false on Windows, silently breaking the skip). The probe is first.
+    const probeCall = exec.mock.calls[0];
+    expect(probeCall[0]).toBe('cmd');
+    expect(probeCall[1]).toEqual(['/c', 'claude', '--version']);
+  });
+
+  it('detects an already-present CLI via the cmd /c probe on Windows and skips (no reinstall)', async () => {
+    const emitter = new EngineEmitter();
+    const events = collect(emitter);
+    // Present shim: `cmd /c claude --version` resolves; the bare `claude` name would fail here.
+    const exec = vi.fn(async (cmd: string, args: string[]) =>
+      cmd === 'cmd' && args[0] === '/c' && args[1] === 'claude'
+        ? { code: 0, stdout: '1.2.3', stderr: '' }
+        : INSTALL_OK,
+    );
+
+    const result = await installAgentCli({
+      config: config({ installCli: ['claude-code'] }),
+      emitter,
+      exec,
+      isWindows: true,
+    });
+
+    expect(exec).toHaveBeenCalledTimes(1); // only the probe — no install call
+    expect(exec.mock.calls[0]).toEqual(['cmd', ['/c', 'claude', '--version']]);
+    expect(events.map((e) => e.status)).toEqual([Status.Skipped]);
+    expect(result).toEqual({ ok: true, installed: [], skipped: ['claude-code'], failed: [] });
   });
 
   it('de-dupes a repeated id — installs once', async () => {
