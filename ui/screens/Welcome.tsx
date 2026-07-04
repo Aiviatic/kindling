@@ -11,6 +11,7 @@ import { useInstaller } from '../state/context';
 import { Button } from '../components/Button';
 import { TextInput } from '../components/TextInput';
 import { submitOptIn } from '../lib/optin';
+import { AGENT_CLI_DESKTOP_URLS } from '../config/agent-cli';
 
 // Parse the engine-produced summary JSON defensively — the CLI guidance is DERIVED from the
 // summary's actual `cli` presence (order-robust, not from the transient step row). Bad/absent
@@ -115,6 +116,9 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
   const parsed = parseSummary(summary);
   const presentClis = parsed ? cliLoginGuidance(parsed) : [];
   const missingClis = parsed ? cliMissing(parsed) : [];
+  // Desktop-app links for the requested agent CLIs that offer one. A calm convenience, not a step:
+  // some people prefer a GUI to the terminal. Only CLIs whose id is in the map get a link.
+  const desktopClis = (parsed?.cli ?? []).filter((c) => c.id in AGENT_CLI_DESKTOP_URLS);
   // Honest version chip (Story 7.2 / AC-6): reflect the ACTUAL installed version for a latest run;
   // fall back to the pinned chip for the default (unchanged) run or an absent installedVersion.
   const versionChip = bmadVersionLabel(parsed, pins.bmad);
@@ -195,6 +199,24 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
             ))}
             , then start it and log in.
           </p>
+        </div>
+      )}
+
+      {/* Desktop-app links — a calm convenience for anyone who prefers a GUI to the terminal. Not a
+          step and never error-styled; only shown for a requested CLI that actually offers a desktop
+          app. Reuses the cli-guidance / eyebrow / start-note patterns. */}
+      {desktopClis.length > 0 && (
+        <div className="cli-guidance" data-testid="cli-desktop">
+          <p className="eyebrow">Prefer a desktop app?</p>
+          {desktopClis.map((c) => (
+            <p key={c.id} className="start-note">
+              Get the{' '}
+              <a href={AGENT_CLI_DESKTOP_URLS[c.id]} target="_blank" rel="noreferrer">
+                {c.name} app<span className="sr-live"> (opens in a new tab)</span>
+              </a>
+              .
+            </p>
+          ))}
         </div>
       )}
 

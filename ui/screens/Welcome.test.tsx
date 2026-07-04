@@ -155,6 +155,38 @@ describe('<Welcome>', () => {
     expect(screen.queryByTestId('cli-missing')).toBeNull();
   });
 
+  it('offers a desktop-app link to the Claude quickstart when claude-code was requested', () => {
+    renderWelcome(vi.fn(), summaryWith([presentClaude]));
+    const desktop = screen.getByTestId('cli-desktop');
+    const link = within(desktop).getByRole('link', { name: /Claude Code app/i });
+    expect(link).toHaveAttribute('href', 'https://code.claude.com/docs/en/desktop-quickstart');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+    // Not error-styled and not a required step: it's a plain convenience region, no alert role.
+    expect(desktop.getAttribute('role')).toBeNull();
+  });
+
+  it('offers a desktop-app link to the Codex app when codex was requested (even if not installed)', () => {
+    renderWelcome(vi.fn(), summaryWith([absentCodex]));
+    const desktop = screen.getByTestId('cli-desktop');
+    const link = within(desktop).getByRole('link', { name: /Codex app/i });
+    expect(link).toHaveAttribute('href', 'https://developers.openai.com/codex/app');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('lists a desktop-app link for each requested CLI that offers one', () => {
+    renderWelcome(vi.fn(), summaryWith([presentClaude, absentCodex]));
+    const desktop = screen.getByTestId('cli-desktop');
+    expect(within(desktop).getByRole('link', { name: /Claude Code app/i })).toBeInTheDocument();
+    expect(within(desktop).getByRole('link', { name: /Codex app/i })).toBeInTheDocument();
+  });
+
+  it('renders no desktop-app section when no CLI was requested (cli: [])', () => {
+    renderWelcome(vi.fn(), summaryWith([]));
+    expect(screen.queryByTestId('cli-desktop')).toBeNull();
+  });
+
   it('#9: tells the user the install is complete and they can close the browser tab', () => {
     renderWelcome();
     expect(screen.getByText(/close this browser tab/i)).toBeInTheDocument();

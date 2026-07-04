@@ -214,6 +214,18 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Browser autofill (Chrome/Edge/WebKit) paints a pale-blue background that clashes with the
+   dark form. You can't set background-color directly on an autofilled control, so use the
+   box-shadow-inset trick to repaint it in the input's own surface + text colors. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-stage) inset;
+  caret-color: var(--color-text-primary);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .field-input:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;

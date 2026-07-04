@@ -13,6 +13,13 @@ export const AGENT_CLI_LABELS: Record<AgentCliId, string> = {
   codex: 'Codex',
 };
 
+/** Optional desktop-app install pages, keyed by agent-CLI id. A CLI absent from this map simply
+ *  gets no desktop-app link (the Welcome screen only renders links for ids that are present). */
+export const AGENT_CLI_DESKTOP_URLS: Record<string, string> = {
+  'claude-code': 'https://code.claude.com/docs/en/desktop-quickstart',
+  codex: 'https://developers.openai.com/codex/app',
+};
+
 /** True when an IDE id is an eligible agent-CLI id (the opt-in scope guard, mirroring the engine). */
 export function isAgentCliId(id: string): id is AgentCliId {
   return (AGENT_CLI_IDS as readonly string[]).includes(id);
