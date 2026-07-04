@@ -1,4 +1,5 @@
 import { Button } from '../components/Button';
+import { BmadLink } from '../components/BmadLink';
 
 export interface IntroProps {
   onContinue: () => void;
@@ -18,16 +19,12 @@ export function Intro({ onContinue, onCancel }: IntroProps) {
         Kindling gets your computer ready to build real software by describing what you want,
         with an AI assistant writing the code. No coding background needed.
       </p>
-      <p className="lede">In the next few minutes it will, all on its own:</p>
+      <p className="lede">In the next few minutes it will:</p>
       <ul className="intro-list">
         <li>Create a fresh project folder on your computer.</li>
         <li>
-          Install{' '}
-          <a href="https://github.com/bmad-code-org/BMAD-METHOD" target="_blank" rel="noreferrer">
-            <b>BMad</b>
-            <span className="sr-live"> (opens in a new tab)</span>
-          </a>
-          , the method that guides your AI from an idea to a working app.
+          Install <BmadLink><b>BMad</b></BmadLink>, the method that guides your AI from an idea to
+          a working app.
         </li>
         <li>Connect the AI coding tools you pick on the next screen.</li>
       </ul>

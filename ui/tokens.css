@@ -295,6 +295,10 @@ input:-webkit-autofill:focus {
   color: var(--color-text-primary);
 }
 
+.lede a {
+  color: var(--color-accent);
+}
+
 /* Intro "what it does" list — same secondary voice as the lede, at a readable size. */
 .intro-list {
   margin: 0;
@@ -443,6 +447,10 @@ fieldset.field {
 .versions th {
   font-weight: 700;
   color: var(--color-text-secondary);
+}
+/* The BMad row label links to the project; accent so it reads as a link, not plain header text. */
+.versions th a {
+  color: var(--color-accent);
 }
 .versions td {
   color: var(--color-text-primary);

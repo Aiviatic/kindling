@@ -15,6 +15,13 @@ export interface WelcomeData {
   summaryJson: string;
 }
 
+// "BMad" as a link to the BMAD-METHOD repo (mirrors the React <BmadLink>). `label` lets a caller
+// link a longer phrase like "BMad Method". Opens in a new tab.
+const BMAD_URL = 'https://github.com/bmad-code-org/BMAD-METHOD';
+function bmadLink(label = 'BMad'): string {
+  return `<a href="${BMAD_URL}" target="_blank" rel="noreferrer">${label}</a>`;
+}
+
 // HTML-escape for safe interpolation into the static page (the summary is machine-generated,
 // but escape defensively so no value can break out of the text/attribute context).
 function esc(s: string): string {
@@ -106,7 +113,7 @@ function versionsTableHtml(summaryJson: string, pinnedFallback: string): string 
   if (node) rows.push(`<tr><th scope="row">Node.js</th><td>${esc(node.version ?? 'Installed')}</td></tr>`);
   if (git) rows.push(`<tr><th scope="row">Git</th><td>${esc(git.version ?? 'Installed')}</td></tr>`);
   rows.push(
-    `<tr><th scope="row">BMad Method</th><td><strong>${esc(chip.version)}</strong> &middot; ${esc(chip.note)}</td></tr>`,
+    `<tr><th scope="row">${bmadLink('BMad Method')}</th><td><strong>${esc(chip.version)}</strong> &middot; ${esc(chip.note)}</td></tr>`,
   );
   for (const c of cli) {
     rows.push(
@@ -157,8 +164,8 @@ export function buildWelcomeHtml(data: WelcomeData): string {
 <main>
   <p class="eyebrow">All set</p>
   <h1>You're ready &#128293;</h1>
-  <p class="lede">Your project is set up with BMad and your tools. Open it in your editor to start building, and close this browser tab whenever you like.</p>
-${versionsTable}${cliGuidance}  <p class="cli-guidance">Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what BMad can do.</p>
+  <p class="lede">Your project is set up with ${bmadLink()} and your tools. Open it in your editor to start building, and close this browser tab whenever you like.</p>
+${versionsTable}${cliGuidance}  <p class="cli-guidance">Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what ${bmadLink()} can do.</p>
   <p class="cli-guidance">Want another project later? Run Kindling again. It remembers where your projects go.</p>
   <p><a href="https://aiviatic.com" target="_blank" rel="noreferrer">Join an Aiviatic workshop</a>, totally optional.</p>
 </main>

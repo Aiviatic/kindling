@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { TextInput } from '../components/TextInput';
 import { submitOptIn } from '../lib/optin';
 import { AGENT_CLI_DESKTOP_URLS } from '../config/agent-cli';
+import { BmadLink } from '../components/BmadLink';
 
 // Parse the engine-produced summary JSON defensively — the CLI guidance is DERIVED from the
 // summary's actual `cli` presence (order-robust, not from the transient step row). Bad/absent
@@ -160,8 +161,8 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
       <p className="eyebrow">All set</p>
       <h1 id="welcome-h">You're ready 🔥</h1>
       <p className="lede">
-        Your project is set up with BMad and your tools. Open it in your editor to start building,
-        and close this browser tab whenever you like.
+        Your project is set up with <BmadLink /> and your tools. Open it in your editor to start
+        building, and close this browser tab whenever you like.
       </p>
 
       <table className="versions" data-testid="versions">
@@ -186,7 +187,9 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
             </tr>
           )}
           <tr>
-            <th scope="row">BMad Method</th>
+            <th scope="row">
+              <BmadLink>BMad Method</BmadLink>
+            </th>
             <td>
               <strong>{versionChip.version}</strong> · {versionChip.note}
             </td>
@@ -274,7 +277,7 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               project, so /bmad-help is the guided front door for a non-developer. */}
           <p className="start-note" data-testid="start-first-prompt">
             Once you're in, just describe what you want to build. You can also type{' '}
-            <code>/bmad-help</code> to see what BMad can do.
+            <code>/bmad-help</code> to see what <BmadLink /> can do.
           </p>
         </div>
       )}
@@ -357,13 +360,6 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
             </Button>
           </form>
         )}
-        <p className="start-note">
-          Prefer not to?{' '}
-          <a href="https://aiviatic.com" target="_blank" rel="noreferrer">
-            Just read more<span className="sr-live"> (opens in a new tab)</span>
-          </a>
-          .
-        </p>
       </div>
     </section>
   );
