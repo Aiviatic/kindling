@@ -15,6 +15,7 @@ function facts(overrides: Partial<ValidationFacts> = {}): ValidationFacts {
     os: 'darwin',
     arch: 'arm64',
     osVersion: '24.0.0',
+    projectDir: '/Users/ada/projects/my-app',
     node: { present: true, version: 'v24.16.0', satisfiesFloor: true },
     git: { present: true, version: 'git version 2.43.0' },
     bmad: { pinnedVersion: '6.1.2', installed: true, installedVersion: '6.1.2' },
@@ -39,6 +40,7 @@ describe('buildValidationSummary', () => {
     expect(s.schemaVersion).toBe(SCHEMA_VERSION);
     expect(SCHEMA_VERSION).toBe(3); // v3 — the `bmad.installedVersion` field bump (Story 7.1 / FR26)
     expect(s.success).toBe(true);
+    expect(s.projectDir).toBe('/Users/ada/projects/my-app'); // threaded through to the summary
     // every schema field present
     expect(Object.keys(s).sort()).toEqual(
       [
@@ -50,6 +52,7 @@ describe('buildValidationSummary', () => {
         'kindlingVersion',
         'node',
         'os',
+        'projectDir',
         'scaffold',
         'schemaVersion',
         'success',

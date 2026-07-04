@@ -117,6 +117,31 @@ describe('<Welcome>', () => {
     expect(within(table).getByText('Claude Code')).toBeInTheDocument();
   });
 
+  it('shows the project folder as the first row of the versions table when the summary includes projectDir', () => {
+    const withProjectDir = JSON.stringify({
+      schemaVersion: 3,
+      success: true,
+      projectDir: '/Users/ada/projects/my-app',
+      node: { present: true, version: '24.16.0', satisfiesFloor: true },
+      git: { present: true, version: '2.43.0' },
+      bmad: { pinnedVersion: '6.9.0', installed: true, installedVersion: '6.9.0' },
+      cli: [],
+    });
+    renderWelcome(vi.fn(), withProjectDir);
+    const table = screen.getByTestId('versions');
+    expect(within(table).getByText('Project folder')).toBeInTheDocument();
+    expect(within(table).getByText('/Users/ada/projects/my-app')).toBeInTheDocument();
+    // It's the FIRST data row (most useful "where is my project").
+    const firstHeader = within(table).getAllByRole('rowheader')[0];
+    expect(firstHeader).toHaveTextContent('Project folder');
+  });
+
+  it('omits the project folder row when the summary carries no projectDir', () => {
+    renderWelcome(vi.fn(), summaryWith([]));
+    const table = screen.getByTestId('versions');
+    expect(within(table).queryByText('Project folder')).toBeNull();
+  });
+
   it('render-acks once so the host can exit the ephemeral server', () => {
     const { onRendered } = renderWelcome();
     expect(onRendered).toHaveBeenCalledTimes(1);
@@ -131,44 +156,88 @@ describe('<Welcome>', () => {
     expect(strip.contains(document.activeElement)).toBe(false);
   });
 
-  it('AC-4: shows the login line naming a present CLI command; not the install notice', () => {
+  it('uses the updated opt-in copy ("Totally optional, setup is complete.")', () => {
+    renderWelcome();
+    const strip = screen.getByTestId('workshop-strip');
+    expect(within(strip).getByText('Totally optional, setup is complete.')).toBeInTheDocument();
+    expect(within(strip).queryByText(/project's already done/)).toBeNull();
+  });
+
+  // A summary that carries os + projectDir alongside the requested CLIs, for the directory-aware,
+  // OS-aware "Start building" guidance.
+  const summaryWithOs = (cli: unknown, os: string, projectDir = '/Users/ada/projects/my-app'): string =>
+    JSON.stringify({ schemaVersion: 3, success: true, os, projectDir, cli, bmad: { pinnedVersion: '6.9.0' } });
+
+  it('Start building: shows one cohesive section naming the requested tool command', () => {
     renderWelcome(vi.fn(), summaryWith([presentClaude]));
-    const login = screen.getByTestId('cli-login');
-    expect(login).toHaveTextContent(/log in/i);
-    expect(within(login).getByText('claude')).toBeInTheDocument();
-    expect(screen.queryByTestId('cli-missing')).toBeNull();
-  });
-
-  it('AC-8: shows the install-it-yourself notice (named, non-error) for an absent CLI', () => {
-    renderWelcome(vi.fn(), summaryWith([absentCodex]));
-    const missing = screen.getByTestId('cli-missing');
-    expect(within(missing).getByText('npm install -g @openai/codex')).toBeInTheDocument();
-    // Non-error: it's a role=status region, not an alert; readiness stays celebratory.
-    expect(missing.getAttribute('role')).toBe('status');
+    const section = screen.getByTestId('start-building');
+    expect(within(section).getByText('Start building')).toBeInTheDocument();
+    // The terminal command for the requested tool is shown.
+    expect(within(section).getByText('claude')).toBeInTheDocument();
+    // Calm and celebratory: plain convenience region, not an alert, and readiness still stands.
+    expect(section.getAttribute('role')).toBeNull();
     expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
-    expect(screen.queryByTestId('cli-login')).toBeNull();
   });
 
-  it('shows NEITHER guidance block when no CLI was requested (cli: [])', () => {
+  it('Start building: desktop-app instructions come BEFORE the terminal instructions in the DOM', () => {
+    renderWelcome(vi.fn(), summaryWith([presentClaude]));
+    const desktop = screen.getByTestId('start-desktop');
+    const terminal = screen.getByTestId('start-terminal');
+    // Desktop first (most users use the app); terminal is the labeled alternative.
+    expect(desktop.compareDocumentPosition(terminal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(terminal).getByText(/Prefer the terminal/i)).toBeInTheDocument();
+  });
+
+  it('Start building: shows the project folder path in BOTH the desktop and terminal guidance', () => {
+    renderWelcome(vi.fn(), summaryWithOs([presentClaude], 'darwin'));
+    expect(screen.getByTestId('start-desktop-folder')).toHaveTextContent('/Users/ada/projects/my-app');
+    expect(screen.getByTestId('start-terminal-folder')).toHaveTextContent('/Users/ada/projects/my-app');
+  });
+
+  it('Start building: renders the Windows-specific terminal tip for os=win32', () => {
+    renderWelcome(vi.fn(), summaryWithOs([presentClaude], 'win32'));
+    const tip = screen.getByTestId('start-terminal-tip');
+    expect(tip).toHaveTextContent(/File Explorer/i);
+    expect(tip).toHaveTextContent(/type cmd/i);
+  });
+
+  it('Start building: renders the macOS-specific terminal tip for os=darwin', () => {
+    renderWelcome(vi.fn(), summaryWithOs([presentClaude], 'darwin'));
+    const tip = screen.getByTestId('start-terminal-tip');
+    expect(tip).toHaveTextContent(/Finder/i);
+    expect(tip).toHaveTextContent(/New Terminal at Folder/i);
+  });
+
+  it('Start building: falls back to a neutral cd tip when the os is absent', () => {
+    renderWelcome(vi.fn(), summaryWith([presentClaude]));
+    expect(screen.getByTestId('start-terminal-tip')).toHaveTextContent(/cd into your project folder/i);
+  });
+
+  it('AC-8: keeps the install-it-yourself fallback (named, non-error) for an absent CLI', () => {
+    renderWelcome(vi.fn(), summaryWith([absentCodex]));
+    const missing = screen.getByTestId('start-missing');
+    expect(within(missing).getByText('npm install -g @openai/codex')).toBeInTheDocument();
+    // Still celebratory: it lives in the calm Start-building section, not an alert.
+    expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
+  });
+
+  it('shows NO Start building section when no CLI was requested (cli: [])', () => {
     renderWelcome(vi.fn(), summaryWith([]));
-    expect(screen.queryByTestId('cli-login')).toBeNull();
-    expect(screen.queryByTestId('cli-missing')).toBeNull();
+    expect(screen.queryByTestId('start-building')).toBeNull();
   });
 
   it('offers a desktop-app link to the Claude quickstart when claude-code was requested', () => {
     renderWelcome(vi.fn(), summaryWith([presentClaude]));
-    const desktop = screen.getByTestId('cli-desktop');
+    const desktop = screen.getByTestId('start-desktop');
     const link = within(desktop).getByRole('link', { name: /Claude Code app/i });
     expect(link).toHaveAttribute('href', 'https://code.claude.com/docs/en/desktop-quickstart');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noreferrer');
-    // Not error-styled and not a required step: it's a plain convenience region, no alert role.
-    expect(desktop.getAttribute('role')).toBeNull();
   });
 
   it('offers a desktop-app link to the Codex app when codex was requested (even if not installed)', () => {
     renderWelcome(vi.fn(), summaryWith([absentCodex]));
-    const desktop = screen.getByTestId('cli-desktop');
+    const desktop = screen.getByTestId('start-desktop');
     const link = within(desktop).getByRole('link', { name: /Codex app/i });
     expect(link).toHaveAttribute('href', 'https://developers.openai.com/codex/app');
     expect(link).toHaveAttribute('target', '_blank');
@@ -177,14 +246,9 @@ describe('<Welcome>', () => {
 
   it('lists a desktop-app link for each requested CLI that offers one', () => {
     renderWelcome(vi.fn(), summaryWith([presentClaude, absentCodex]));
-    const desktop = screen.getByTestId('cli-desktop');
+    const desktop = screen.getByTestId('start-desktop');
     expect(within(desktop).getByRole('link', { name: /Claude Code app/i })).toBeInTheDocument();
     expect(within(desktop).getByRole('link', { name: /Codex app/i })).toBeInTheDocument();
-  });
-
-  it('renders no desktop-app section when no CLI was requested (cli: [])', () => {
-    renderWelcome(vi.fn(), summaryWith([]));
-    expect(screen.queryByTestId('cli-desktop')).toBeNull();
   });
 
   it('#9: tells the user the install is complete and they can close the browser tab', () => {

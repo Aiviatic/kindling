@@ -46,6 +46,7 @@ describe('runSelfCheck', () => {
     expect(summary.success).toBe(true);
     expect(summary.node.satisfiesFloor).toBe(true);
     expect(summary.git.present).toBe(true);
+    expect(summary.projectDir).toBe('/tmp/proj'); // opts.projectDir threaded into the summary
     expect(events.map((e) => e.status)).toEqual([Status.Working, Status.Done]);
     expect(events.every((e) => e.step === StepId.FinalizeSelfCheck)).toBe(true);
   });

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Pins } from '../../engine/contract';
 import {
-  cliLoginGuidance,
   cliMissing,
   bmadVersionLabel,
   type CliPresence,
@@ -23,6 +22,8 @@ function parseSummary(
   bmad: ValidationSummary['bmad'];
   node?: ValidationSummary['node'];
   git?: ValidationSummary['git'];
+  projectDir?: string;
+  os?: string;
 } | null {
   if (!json) return null;
   try {
@@ -31,6 +32,8 @@ function parseSummary(
       bmad?: ValidationSummary['bmad'];
       node?: ValidationSummary['node'];
       git?: ValidationSummary['git'];
+      projectDir?: unknown;
+      os?: unknown;
     };
     return {
       cli: Array.isArray(parsed.cli) ? parsed.cli : [],
@@ -39,10 +42,37 @@ function parseSummary(
       bmad: parsed.bmad as ValidationSummary['bmad'],
       node: parsed.node,
       git: parsed.git,
+      projectDir: typeof parsed.projectDir === 'string' ? parsed.projectDir : undefined,
+      // `os` (win32/darwin/linux) makes the "how to open a terminal here" tip OS-aware.
+      os: typeof parsed.os === 'string' ? parsed.os : undefined,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * The friendly, OS-aware one-liner for opening a terminal *in the project folder* — the folder
+ * matters because running `claude`/`codex` from the wrong place starts them in the wrong project.
+ * Falls back to a neutral `cd` hint when the OS is unknown/absent.
+ */
+function terminalTip(os: string | undefined): string {
+  switch (os) {
+    case 'win32':
+      return 'To open one there: open the folder in File Explorer, click the address bar, type cmd, and press Enter.';
+    case 'darwin':
+      return 'To open one there: in Finder, right-click the project folder and choose New Terminal at Folder (you can enable this once under System Settings > Keyboard > Shortcuts > Services if you do not see it).';
+    case 'linux':
+      return 'To open one there: right-click the project folder and choose Open in Terminal.';
+    default:
+      return 'To open one there: open a terminal and cd into your project folder, then run the command.';
+  }
+}
+
+/** Join tool names into calm prose: "Claude Code" or "Claude Code or Codex" or "A, B or C". */
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
 }
 
 export interface WelcomeProps {
@@ -114,11 +144,13 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
 
   const summary = state.summaryJson;
   const parsed = parseSummary(summary);
-  const presentClis = parsed ? cliLoginGuidance(parsed) : [];
+  // Every requested agent tool (present or not) — the terminal command is the tool's `bin` either way.
+  const requestedClis = parsed?.cli ?? [];
   const missingClis = parsed ? cliMissing(parsed) : [];
-  // Desktop-app links for the requested agent CLIs that offer one. A calm convenience, not a step:
-  // some people prefer a GUI to the terminal. Only CLIs whose id is in the map get a link.
-  const desktopClis = (parsed?.cli ?? []).filter((c) => c.id in AGENT_CLI_DESKTOP_URLS);
+  // Requested tools that offer a desktop app — the "easy way" most people will use. Only ids in the
+  // map get a link; both current tools do, so this normally equals `requestedClis`.
+  const desktopClis = requestedClis.filter((c) => c.id in AGENT_CLI_DESKTOP_URLS);
+  const projectDir = parsed?.projectDir;
   // Honest version chip (Story 7.2 / AC-6): reflect the ACTUAL installed version for a latest run;
   // fall back to the pinned chip for the default (unchanged) run or an absent installedVersion.
   const versionChip = bmadVersionLabel(parsed, pins.bmad);
@@ -137,6 +169,12 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
       <table className="versions" data-testid="versions">
         <caption>Here's what's set up on your computer</caption>
         <tbody>
+          {parsed?.projectDir && (
+            <tr>
+              <th scope="row">Project folder</th>
+              <td>{parsed.projectDir}</td>
+            </tr>
+          )}
           {parsed?.node && (
             <tr>
               <th scope="row">Node.js</th>
@@ -164,59 +202,75 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
         </tbody>
       </table>
 
-      {/* FR25 login guidance — the ONE remaining manual step for each present agent CLI. Calm and
-          celebratory (not an error): the CLI is installed, you just log in once. Derived from the
-          summary's `cli` presence, so it's accurate regardless of install-event ordering. */}
-      {presentClis.length > 0 && (
-        <div className="cli-guidance" role="status" data-testid="cli-login">
-          <p className="eyebrow">One last step</p>
-          <p>
-            Open a terminal, run{' '}
-            {presentClis.map((c, i) => (
-              <span key={c.id}>
-                {i > 0 && (i === presentClis.length - 1 ? ' or ' : ', ')}
-                <code>{c.bin}</code>
-              </span>
-            ))}
-            , and log in, then you're all set.
-          </p>
-        </div>
-      )}
+      {/* "Start building" — the one calm, celebratory (never error-styled, never blocking) section
+          that tells a NON-developer how to actually start using their AI tool. Two ways, easiest
+          first: the desktop app, then the terminal. Rendered only when a tool was requested. */}
+      {requestedClis.length > 0 && (
+        <div className="cli-guidance" data-testid="start-building">
+          <p className="eyebrow">Start building</p>
 
-      {/* Non-blocking "install-it-yourself" notice for a requested CLI that didn't install (AC-8).
-          Never error-styled — your project is already done; this is just the one line to finish. */}
-      {missingClis.length > 0 && (
-        <div className="cli-guidance" role="status" data-testid="cli-missing">
-          <p className="eyebrow">Optional finishing touch</p>
-          <p>
-            Your AI assistant didn't finish installing. No problem, your project is ready. To install
-            it yourself, run{' '}
-            {missingClis.map((c, i) => (
-              <span key={c.id}>
-                {i > 0 && (i === missingClis.length - 1 ? ' and ' : ', ')}
-                <code>npm install -g {c.pkg}</code>
-              </span>
-            ))}
-            , then start it and log in.
-          </p>
-        </div>
-      )}
+          {/* THE EASY WAY — desktop app first: most people will use the app, not the terminal. Open
+              the app, point it at the project folder (it needs to know where your project lives),
+              and log in. */}
+          {desktopClis.length > 0 && (
+            <div data-testid="start-desktop">
+              <p>
+                The easy way: open the {joinNames(desktopClis.map((c) => c.name))} app, choose your
+                project folder, and log in.
+              </p>
+              {projectDir && (
+                <p className="start-note" data-testid="start-desktop-folder">
+                  📁 {projectDir}
+                </p>
+              )}
+              {desktopClis.map((c) => (
+                <p key={c.id} className="start-note">
+                  Get the{' '}
+                  <a href={AGENT_CLI_DESKTOP_URLS[c.id]} target="_blank" rel="noreferrer">
+                    {c.name} app<span className="sr-live"> (opens in a new tab)</span>
+                  </a>
+                  .
+                </p>
+              ))}
+            </div>
+          )}
 
-      {/* Desktop-app links — a calm convenience for anyone who prefers a GUI to the terminal. Not a
-          step and never error-styled; only shown for a requested CLI that actually offers a desktop
-          app. Reuses the cli-guidance / eyebrow / start-note patterns. */}
-      {desktopClis.length > 0 && (
-        <div className="cli-guidance" data-testid="cli-desktop">
-          <p className="eyebrow">Prefer a desktop app?</p>
-          {desktopClis.map((c) => (
-            <p key={c.id} className="start-note">
-              Get the{' '}
-              <a href={AGENT_CLI_DESKTOP_URLS[c.id]} target="_blank" rel="noreferrer">
-                {c.name} app<span className="sr-live"> (opens in a new tab)</span>
-              </a>
-              .
+          {/* THE ALTERNATIVE — the terminal. Critical: open it IN the project folder, or the tool
+              starts in the wrong place. OS-aware tip on how to do exactly that. */}
+          <div data-testid="start-terminal">
+            <p className="eyebrow">Prefer the terminal?</p>
+            <p>
+              Open a terminal in your project folder, run{' '}
+              {requestedClis.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && (i === requestedClis.length - 1 ? ' or ' : ', ')}
+                  <code>{c.bin}</code>
+                </span>
+              ))}
+              , and log in.
             </p>
-          ))}
+            {projectDir && (
+              <p className="start-note" data-testid="start-terminal-folder">
+                📁 {projectDir}
+              </p>
+            )}
+            <p className="start-note" data-testid="start-terminal-tip">
+              {terminalTip(parsed?.os)}
+            </p>
+            {missingClis.length > 0 && (
+              <p className="start-note" data-testid="start-missing">
+                If a command is not found, it did not finish installing. No problem, your project is
+                ready. Install it yourself with{' '}
+                {missingClis.map((c, i) => (
+                  <span key={c.id}>
+                    {i > 0 && (i === missingClis.length - 1 ? ' and ' : ', ')}
+                    <code>npm install -g {c.pkg}</code>
+                  </span>
+                ))}
+                , then run it and log in.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -226,7 +280,7 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
         <p className="eyebrow">Optional</p>
         <p>
           Aiviatic runs hands-on build workshops. Want to hear if there's one near
-          you? <b>Totally optional. Your project's already done.</b>
+          you? <b>Totally optional, setup is complete.</b>
         </p>
         {optedIn ? (
           <p role="status">Thanks, we'll be in touch. 🔥</p>

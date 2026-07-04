@@ -33,6 +33,8 @@ export interface ValidationSummary {
   os: string;
   arch: string;
   osVersion: string;
+  /** The project directory the setup targeted — surfaced on the Welcome screen as "where is my project". */
+  projectDir: string;
   node: { present: boolean; version: string | null; satisfiesFloor: boolean };
   git: { present: boolean; version: string | null };
   /**
@@ -54,6 +56,7 @@ export interface ValidationFacts {
   os: string;
   arch: string;
   osVersion: string;
+  projectDir: string;
   node: { present: boolean; version: string | null; satisfiesFloor: boolean };
   git: { present: boolean; version: string | null };
   bmad: { pinnedVersion: string; installed: boolean; installedVersion: string | null };
@@ -79,6 +82,7 @@ export function buildValidationSummary(facts: ValidationFacts): ValidationSummar
     os: facts.os,
     arch: facts.arch,
     osVersion: facts.osVersion,
+    projectDir: facts.projectDir,
     node: facts.node,
     git: facts.git,
     bmad: facts.bmad,

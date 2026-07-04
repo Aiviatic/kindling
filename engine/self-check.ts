@@ -107,6 +107,7 @@ export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSu
     os: platform.os,
     arch: platform.arch,
     osVersion: platform.osVersion,
+    projectDir: opts.projectDir,
     node: {
       present: nodeVersion !== null,
       version: nodeVersion,
