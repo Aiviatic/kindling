@@ -310,6 +310,20 @@ input:-webkit-autofill:focus {
   color: var(--color-text-primary);
 }
 
+.intro-list a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.intro-list a:hover {
+  text-decoration: underline;
+}
+
+/* The bolded link label (BMad) inherits the link's accent color, not the primary-text bold. */
+.intro-list a b {
+  color: inherit;
+}
+
 .field legend.field-label,
 .field-label {
   padding: 0;
