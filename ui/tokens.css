@@ -147,6 +147,35 @@ body {
   min-height: 420px;
 }
 
+/* Persistent footer — framed like the titlebar (same deep stage + border) so it reads as part
+   of the window chrome, present on every screen. */
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-7);
+  background: var(--color-stage-deep);
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.app-footer-links {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.app-footer a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  text-decoration: underline;
+}
+
 /* Base components --------------------------------------------------------- */
 
 .btn {
@@ -263,6 +292,21 @@ input:-webkit-autofill:focus {
 }
 
 .lede b {
+  color: var(--color-text-primary);
+}
+
+/* Intro "what it does" list — same secondary voice as the lede, at a readable size. */
+.intro-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 18px;
+  color: var(--color-text-secondary);
+}
+
+.intro-list b {
   color: var(--color-text-primary);
 }
 

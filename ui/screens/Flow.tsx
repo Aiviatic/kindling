@@ -32,6 +32,9 @@ export function Flow({ catalog, pins, initialFolder }: FlowProps) {
   const [starting, setStarting] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [reconfiguring, setReconfiguring] = useState(false);
+  // The user quit from a pre-start screen: the local server is being torn down, so show a
+  // terminal "stopped" screen and never fall back into the flow.
+  const [stopped, setStopped] = useState(false);
   const baseline = useRef(0);
 
   // Clear the pre-event flag once the engine emits an event BEYOND the hand-off baseline.
@@ -61,6 +64,26 @@ export function Flow({ catalog, pins, initialFolder }: FlowProps) {
     if (state.failure) run(commands.retry(state.failure.step)); // re-run in place; no reset
   };
 
+  // Quit from a pre-start screen: fire the kill (best-effort — the server may exit before the
+  // response lands) and switch to the terminal stopped screen immediately.
+  const handleQuit = (): void => {
+    void commands.quit().catch(() => {});
+    setStopped(true);
+  };
+
+  if (stopped) {
+    return (
+      <section className="screen" aria-labelledby="stopped-h">
+        <p className="eyebrow">Stopped</p>
+        <h1 id="stopped-h">Setup canceled.</h1>
+        <p className="lede">
+          Kindling has stopped and nothing was installed. It's safe to close this tab. To set up a
+          project later, just start Kindling again the same way you did this time.
+        </p>
+      </section>
+    );
+  }
+
   if (reconfiguring) {
     return (
       <Configure
@@ -70,6 +93,7 @@ export function Flow({ catalog, pins, initialFolder }: FlowProps) {
         onStart={handleStart}
         inspect={commands.inspect}
         initialFolder={initialFolder}
+        onCancel={handleQuit}
       />
     );
   }
@@ -95,7 +119,7 @@ export function Flow({ catalog, pins, initialFolder }: FlowProps) {
   }
 
   if (screen === 'intro') {
-    return <Intro onContinue={() => setScreen('configure')} />;
+    return <Intro onContinue={() => setScreen('configure')} onCancel={handleQuit} />;
   }
   return (
     <Configure
@@ -105,6 +129,7 @@ export function Flow({ catalog, pins, initialFolder }: FlowProps) {
       onStart={handleStart}
       inspect={commands.inspect}
       initialFolder={initialFolder}
+      onCancel={handleQuit}
     />
   );
 }

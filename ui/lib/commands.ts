@@ -21,6 +21,8 @@ export interface UiCommands {
   retry(step: StepId): Promise<void>;
   /** Render-ack: the Welcome screen rendered → the host may exit the ephemeral server (3.7). */
   ack(): Promise<void>;
+  /** Quit from a pre-start screen → the host tears down the server and exits the process. */
+  quit(): Promise<void>;
   /**
    * Configure-time probe (Story 7.2): ask the server whether `projectDir` already holds a Kindling
    * `_bmad` (and its installed version). Reads the JSON body (unlike the fire-and-forget commands).
@@ -70,6 +72,7 @@ export function createCommands(opts: CommandsOptions = {}): UiCommands {
     cancel: () => post('/cancel'),
     retry: (step) => post('/retry', { step }),
     ack: () => post('/ack'),
+    quit: () => post('/quit'),
     inspect: async (projectDir) => {
       const res = await doFetch(`${base}/inspect`, {
         method: 'POST',

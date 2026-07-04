@@ -105,6 +105,13 @@ export async function runServerMode(
       acked = true;
       void finish().catch(() => exit(0));
     },
+    // The user quit from a pre-start screen: nothing was installed, so just tear down the
+    // ephemeral server and exit cleanly. Shares the one-shot guard with the success path.
+    onQuit: () => {
+      if (acked) return;
+      acked = true;
+      void server.close().then(() => exit(0), () => exit(0));
+    },
   });
 
   // On success: persist the self-contained Welcome page (survives exit), then close + exit.

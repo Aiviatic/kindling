@@ -176,6 +176,20 @@ describe('startServer', () => {
     expect(onWelcomeAck).toHaveBeenCalledOnce();
   });
 
+  it('POST /quit fires the onQuit hook (202) so the host can tear down + exit', async () => {
+    const onQuit = vi.fn();
+    running = await startServer({ emitter: new EngineEmitter(), commands: fakeCommands(), onQuit });
+    expect(await post(running.url, '/quit')).toBe(202);
+    expect(onQuit).toHaveBeenCalledOnce();
+  });
+
+  it('POST /quit without the CSRF header → 403 (guarded like every command)', async () => {
+    const onQuit = vi.fn();
+    running = await startServer({ emitter: new EngineEmitter(), commands: fakeCommands(), onQuit });
+    expect(await post(running.url, '/quit', undefined, {})).toBe(403);
+    expect(onQuit).not.toHaveBeenCalled();
+  });
+
   it('POST /retry passes the step; missing step → 400', async () => {
     const commands = fakeCommands();
     running = await startServer({ emitter: new EngineEmitter(), commands });

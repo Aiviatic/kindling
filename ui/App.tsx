@@ -5,6 +5,7 @@ import { InstallerProvider } from './state/context';
 import { Flow } from './screens/Flow';
 import { loadIdeCatalog, type IdeCatalog } from './config/ide-catalog';
 import { loadLastProjectFolder } from './lib/prefs';
+import { Footer } from './components/Footer';
 
 // Window-framed app shell (DESIGN.md): a faux browser/app window — titlebar with traffic-light
 // dots + a url bar — over the dark flame stage, content centered at ~1000px max. The guided
@@ -51,6 +52,7 @@ export default function App() {
             )}
           </InstallerProvider>
         </main>
+        <Footer />
       </div>
     </div>
   );

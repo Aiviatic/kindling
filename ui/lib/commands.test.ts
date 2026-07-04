@@ -54,6 +54,14 @@ describe('createCommands', () => {
     expect(JSON.parse(calls[0].body!)).toEqual({ step: StepId.InstallBmad });
   });
 
+  it('POSTs /quit with no body', async () => {
+    const { calls, fetch } = recorder();
+    await createCommands({ fetch }).quit();
+    expect(calls[0].url).toBe('/quit');
+    expect(calls[0].body).toBeUndefined();
+    expect(calls[0].headers['X-Kindling']).toBe('1');
+  });
+
   it('prefixes baseUrl when given', async () => {
     const { calls, fetch } = recorder();
     await createCommands({ fetch, baseUrl: 'http://127.0.0.1:5000' }).cancel();

@@ -108,6 +108,16 @@ describe('runServerMode', () => {
     expect(deps.exit).toHaveBeenCalledWith(0);
   });
 
+  it('onQuit tears down the server and exits(0) without running an install', async () => {
+    const { emitter, server, deps, opts } = harness();
+    await runServerMode(emitter, deps);
+    opts().onQuit?.();
+    await new Promise((r) => setTimeout(r, 0)); // let the async close().then(exit) settle
+    expect(server.close).toHaveBeenCalled();
+    expect(deps.exit).toHaveBeenCalledWith(0);
+    expect(deps.engineFactory).not.toHaveBeenCalled(); // nothing was installed
+  });
+
   it('saves the UNexpanded projects folder on /start and wires GET /prefs to the read seam', async () => {
     const { emitter, deps, opts } = harness();
     await runServerMode(emitter, deps);

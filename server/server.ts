@@ -30,6 +30,9 @@ export interface StartServerOptions {
   onWelcomeAck?: () => void;
   /** Last run's projects folder for the Configure prefill (GET /prefs); absent → null. */
   getLastProjectFolder?: () => Promise<string | null>;
+  /** Called when the user quits from a pre-start screen (POST /quit). The host tears down the
+   *  ephemeral server and exits the process — the user asked to stop before installing anything. */
+  onQuit?: () => void;
 }
 
 export interface RunningServer {
@@ -84,7 +87,7 @@ async function serveStatic(uiDir: string, pathname: string, res: ServerResponse)
 // Stands up the localhost server: SSE event stream, command POSTs, and (optional) static UI.
 // Binds 127.0.0.1 on an ephemeral port (NFR6); resolves once listening.
 export async function startServer(opts: StartServerOptions): Promise<RunningServer> {
-  const { emitter, commands, uiDir, onWelcomeAck, getLastProjectFolder } = opts;
+  const { emitter, commands, uiDir, onWelcomeAck, getLastProjectFolder, onQuit } = opts;
   const sseClients = new Set<ServerResponse>();
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -216,6 +219,13 @@ export async function startServer(opts: StartServerOptions): Promise<RunningServ
       if (pathname === '/cancel') {
         commands.cancel();
         res.writeHead(202).end();
+        return;
+      }
+      if (pathname === '/quit') {
+        // The user chose to stop before an install started. Respond first so the request completes
+        // even if onQuit closes the server synchronously, then let the host exit the process.
+        res.writeHead(202).end();
+        onQuit?.();
         return;
       }
       if (pathname === '/ack') {

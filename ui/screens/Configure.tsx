@@ -30,6 +30,9 @@ export interface ConfigureProps {
    * already keeps projects. Null/absent falls back to the built-in default.
    */
   initialFolder?: string | null;
+  /** Quit the installer from this pre-start screen (kills the local server). Optional so the
+   *  screen still renders in isolation (tests) without the quit wiring. */
+  onCancel?: () => void;
 }
 
 type ProbeStatus = 'idle' | 'checking' | 'done' | 'error';
@@ -52,6 +55,7 @@ export function Configure({
   enableBmadUpdate = ENABLE_BMAD_UPDATE,
   debounceMs = 350,
   initialFolder,
+  onCancel,
 }: ConfigureProps) {
   const base = defaultConfig(pins);
   // Folder (where projects live) + project name are separate, first-class fields; the install path
@@ -369,6 +373,11 @@ export function Configure({
         <Button variant="primary" onClick={start} disabled={!canStart}>
           Start
         </Button>
+        {onCancel && (
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel setup
+          </Button>
+        )}
         {!canStart && (
           <span className="start-note" role="status">
             Pick at least one tool and one module, and keep a project name and folder.

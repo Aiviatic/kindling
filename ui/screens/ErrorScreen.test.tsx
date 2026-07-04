@@ -40,6 +40,7 @@ function renderError(
     cancel: vi.fn().mockResolvedValue(undefined),
     retry: vi.fn().mockResolvedValue(undefined),
     ack: vi.fn().mockResolvedValue(undefined),
+    quit: vi.fn().mockResolvedValue(undefined),
     inspect: vi.fn().mockResolvedValue({ isKindlingProject: false, installedBmadVersion: null }),
   };
   const onRetry = props.onRetry ?? vi.fn();

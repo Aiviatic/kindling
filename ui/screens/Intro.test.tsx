@@ -11,4 +11,15 @@ describe('<Intro>', () => {
     screen.getByRole('button', { name: "Let's go" }).click();
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
+
+  it('offers Cancel only when onCancel is provided, and calls it', () => {
+    const onCancel = vi.fn();
+    const { rerender } = render(<Intro onContinue={vi.fn()} />);
+    // No cancel affordance without the handler (the screen still renders standalone).
+    expect(screen.queryByRole('button', { name: 'Cancel setup' })).not.toBeInTheDocument();
+
+    rerender(<Intro onContinue={vi.fn()} onCancel={onCancel} />);
+    screen.getByRole('button', { name: 'Cancel setup' }).click();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
 });

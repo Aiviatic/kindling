@@ -37,6 +37,7 @@ function renderFlow(startImpl: UiCommands['start'] = vi.fn().mockResolvedValue(u
     cancel: vi.fn().mockResolvedValue(undefined),
     retry: vi.fn().mockResolvedValue(undefined),
     ack: vi.fn().mockResolvedValue(undefined),
+    quit: vi.fn().mockResolvedValue(undefined),
     inspect: vi.fn().mockResolvedValue({ isKindlingProject: false, installedBmadVersion: null }),
   };
   render(
@@ -95,6 +96,23 @@ describe('<Flow>', () => {
     // Conflict → non-destructive choose-folder, which returns to Configure.
     fireEvent.click(screen.getByRole('button', { name: 'Choose a different folder' }));
     expect(screen.getByRole('heading', { name: /Give your project a name/ })).toBeInTheDocument();
+  });
+
+  it('Cancel on Intro quits (kills the server) and shows the terminal stopped screen', () => {
+    const { commands } = renderFlow();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel setup' }));
+    expect(commands.quit).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: /Setup canceled/ })).toBeInTheDocument();
+    // Terminal: the flow does not fall back to Intro/Configure.
+    expect(screen.queryByRole('button', { name: "Let's go" })).not.toBeInTheDocument();
+  });
+
+  it('Cancel on Configure quits and shows the stopped screen', () => {
+    const { commands } = renderFlow();
+    fireEvent.click(screen.getByRole('button', { name: "Let's go" })); // → Configure
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel setup' }));
+    expect(commands.quit).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: /Setup canceled/ })).toBeInTheDocument();
   });
 
   it('threads commands.inspect to the PRIMARY Intro→Configure <Configure> (the probe fires from it)', async () => {
