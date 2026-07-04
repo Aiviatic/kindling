@@ -224,15 +224,19 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
                   📁 {projectDir}
                 </p>
               )}
-              {desktopClis.map((c) => (
-                <p key={c.id} className="start-note">
-                  Get the{' '}
-                  <a href={AGENT_CLI_DESKTOP_URLS[c.id]} target="_blank" rel="noreferrer">
-                    {c.name} app<span className="sr-live"> (opens in a new tab)</span>
+              <div className="start-app-buttons">
+                {desktopClis.map((c) => (
+                  <a
+                    key={c.id}
+                    className="btn btn--secondary"
+                    href={AGENT_CLI_DESKTOP_URLS[c.id]}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Get the {c.name} app<span className="sr-live"> (opens in a new tab)</span>
                   </a>
-                  .
-                </p>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 

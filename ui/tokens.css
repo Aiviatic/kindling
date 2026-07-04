@@ -193,6 +193,14 @@ body {
   filter: brightness(1.08);
 }
 
+/* Anchors styled as buttons (external links that should read as prominent actions, e.g. the
+   "Get the … app" download buttons on Welcome). */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .btn:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 3px;
@@ -419,6 +427,14 @@ fieldset.field {
 .start-note {
   font-size: 15px;
   color: var(--color-text-secondary);
+}
+
+/* Row of "Get the … app" download buttons (Welcome, the easy way). */
+.start-app-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-5);
 }
 
 /* The "read more" escape link: on-brand flame accent so it reads clearly as a link
