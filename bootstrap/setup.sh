@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Kindling bootstrap — macOS/Linux. Served by the Landing Page as:
-#   curl -fsSL https://kindling.aiviatic.com/go | bash
+#   curl -fsSL https://kindling.aiviatic.com/install | bash
 # Ensures the pinned Node + Git, then launches Kindling in the SAME shell (no new terminal).
 #
 # Pinned versions below MUST match engine/pins.ts + node-unix.ts (a unit test asserts this).
 set -euo pipefail
 
 KINDLING_NODE_VERSION="24.16.0"  # == pins.node
-KINDLING_VERSION="0.1.0"         # == pins.kindling
+KINDLING_VERSION="0.1.1"         # == pins.kindling
 NVM_VERSION="v0.40.3"            # == NVM_VERSION (engine/provision/node-unix.ts)
 NODE_FLOOR_MAJOR=20
 

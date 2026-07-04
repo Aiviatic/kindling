@@ -1,7 +1,7 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
-import { join, normalize, extname } from 'node:path';
+import { join, normalize, extname, sep } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { EngineEmitter } from '../engine/emitter';
 import { StepId, type Config, type KindlingEvent, type InspectResult } from '../engine/contract';
@@ -64,7 +64,9 @@ async function serveStatic(uiDir: string, pathname: string, res: ServerResponse)
   const filePath = normalize(join(uiDir, rel));
   // Path-traversal guard: the resolved path must stay within uiDir. (We serve only our own
   // built dist/ui — not attacker-writable — so symlink resolution is out of scope.)
-  if (filePath !== normalize(uiDir) && !filePath.startsWith(normalize(uiDir) + '/')) {
+  // Use the platform path separator, NOT a literal '/': on Windows `normalize` yields backslash
+  // paths, so `+ '/'` never matched and EVERY file was forbidden (dress-rehearsal Windows bug).
+  if (filePath !== normalize(uiDir) && !filePath.startsWith(normalize(uiDir) + sep)) {
     res.writeHead(403).end('forbidden');
     return;
   }

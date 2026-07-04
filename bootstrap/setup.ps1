@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 
 $KindlingNodeVersion = '24.16.0'  # == pins.node
-$KindlingVersion     = '0.1.0'    # == pins.kindling
+$KindlingVersion     = '0.1.1'    # == pins.kindling
 $NodeFloorMajor      = 20
 
 # --- Inline helpers (were bootstrap/lib/common.ps1; inlined for the file-less delivery) ----------
@@ -83,10 +83,23 @@ if (Test-Cmd 'git') {
 
 # --- Launch Kindling (clean-runtime: absolute node when portable, else npx on PATH) -----------
 Say "Starting Kindling..."
+# Launch from a NEUTRAL directory, never the folder the download was run from. npx runs the
+# package's `kindling` bin BY NAME, and Windows searches the CURRENT directory first — so if the
+# downloaded `kindling.cmd` sits in the cwd, `kindling` resolves to IT instead of npx's shim and
+# re-runs the whole bootstrap forever (dress-rehearsal Windows loop, 2026-07-03). LOCALAPPDATA\kindling
+# holds only the portable Node, never a `kindling.cmd`.
+$launchDir = Join-Path $env:LOCALAPPDATA 'kindling'
+New-Item -ItemType Directory -Force -Path $launchDir | Out-Null
+Set-Location -LiteralPath $launchDir
 if ($null -eq $NodeExe) {
   & npx -y "@aiviatic/kindling@$KindlingVersion"
 } else {
-  # Invoke npx's CLI through the exact provisioned node binary — no reliance on PATH.
+  # Put the provisioned Node dir on PATH so bare `node`/`npm`/`npx` resolve by NAME. Launching via the
+  # absolute node binary isn't enough: npx and the launched package (plus the child processes the
+  # engine spawns for provisioning) call `node` by name and inherit this PATH — without it they fail
+  # with "'node' is not recognized" and Kindling never starts. (Dress-rehearsal finding, 2026-07-03.)
+  $env:Path = "$(Split-Path $NodeExe);$env:Path"
+  # Invoke npx's CLI through the exact provisioned node binary — no reliance on PATH for the launch itself.
   $NpxCli = Join-Path (Split-Path $NodeExe) 'node_modules\npm\bin\npx-cli.js'
   & $NodeExe $NpxCli -y "@aiviatic/kindling@$KindlingVersion"
 }
