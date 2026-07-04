@@ -6,7 +6,7 @@ import type { ValidationSummary } from './validation-summary';
 import type { SelfCheckOptions } from './self-check';
 import type { FailureLogEntry } from './log';
 import { npxCliPath, npmCliPath } from './orchestrate/launch';
-import type { BmadInstallOptions } from './orchestrate/bmad-install';
+import type { MethodContext } from './method/provider';
 import type { AgentCliOptions } from './orchestrate/agent-cli';
 
 function config(): Config {
@@ -45,7 +45,7 @@ function deps(over: Partial<EngineDeps> = {}): Partial<EngineDeps> {
     provisionGit: vi.fn(async () => ({ ok: true })),
     platform: 'linux',
     scaffold: vi.fn(async () => 'created' as const),
-    runBmadInstall: vi.fn(async () => ({ ok: true, bmadVersion: '6.1.2' })),
+    installMethod: vi.fn(async () => ({ ok: true, version: '6.1.2' })),
     installAgentCli: vi.fn(async () => ({ ok: true, installed: [], skipped: [], failed: [] })),
     runSelfCheck: vi.fn(async () => greenSummary),
     writeFailureLog: vi.fn(async () => '/tmp/.kindling/logs/report.log'),
@@ -62,7 +62,7 @@ describe('Engine orchestration', () => {
     expect(result.ok).toBe(true);
     expect(result.summary?.success).toBe(true);
     expect(d.scaffold).toHaveBeenCalledOnce();
-    expect(d.runBmadInstall).toHaveBeenCalledOnce();
+    expect(d.installMethod).toHaveBeenCalledOnce();
     expect(d.runSelfCheck).toHaveBeenCalledOnce();
     expect(d.writeFailureLog).not.toHaveBeenCalled();
   });
@@ -126,15 +126,15 @@ describe('Engine orchestration', () => {
     expect(result.failedStep).toBe(StepId.ProvisionGit);
   });
 
-  it('Windows: routes the BMad install through node + npx-cli.js (no bare npx.cmd)', async () => {
-    const runBmadInstall = vi.fn(async (_opts: BmadInstallOptions) => ({ ok: true, bmadVersion: '6.1.2' }));
-    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'win32', runBmadInstall }));
+  it('Windows: threads the node + npx-cli.js runner to the method install (no bare npx.cmd)', async () => {
+    const installMethod = vi.fn(async (_ctx: MethodContext) => ({ ok: true, version: '6.1.2' }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'win32', installMethod }));
     await engine.start();
 
-    expect(runBmadInstall).toHaveBeenCalledOnce();
-    const opts = runBmadInstall.mock.calls[0][0];
-    expect(opts.npxCommand).toBe(process.execPath);
-    expect(opts.npxPrefixArgs).toEqual([npxCliPath(process.execPath)]);
+    expect(installMethod).toHaveBeenCalledOnce();
+    const ctx = installMethod.mock.calls[0][0];
+    expect(ctx.runner.command).toBe(process.execPath);
+    expect(ctx.runner.prefixArgs).toEqual([npxCliPath(process.execPath)]);
   });
 
   it('Windows: routes the agent-CLI install through node + npm-cli.js (no bare npm.cmd)', async () => {
@@ -150,15 +150,15 @@ describe('Engine orchestration', () => {
     expect(opts.isWindows).toBe(true);
   });
 
-  it('non-Windows: passes no npx/npm Windows wiring (macOS/Linux behavior unchanged)', async () => {
-    const runBmadInstall = vi.fn(async (_opts: BmadInstallOptions) => ({ ok: true, bmadVersion: '6.1.2' }));
+  it('non-Windows: uses the plain npx runner + passes no npm Windows wiring (macOS/Linux unchanged)', async () => {
+    const installMethod = vi.fn(async (_ctx: MethodContext) => ({ ok: true, version: '6.1.2' }));
     const installAgentCli = vi.fn(async (_opts: AgentCliOptions) => ({ ok: true, installed: [], skipped: [], failed: [] }));
-    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'linux', runBmadInstall, installAgentCli }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'linux', installMethod, installAgentCli }));
     await engine.start();
 
-    const bmadOpts = runBmadInstall.mock.calls[0][0];
-    expect(bmadOpts.npxCommand).toBeUndefined();
-    expect(bmadOpts.npxPrefixArgs).toBeUndefined();
+    const ctx = installMethod.mock.calls[0][0];
+    expect(ctx.runner.command).toBe('npx');
+    expect(ctx.runner.prefixArgs).toEqual([]);
     const cliOpts = installAgentCli.mock.calls[0][0];
     expect(cliOpts.npmCommand).toBeUndefined();
     expect(cliOpts.npmPrefixArgs).toBeUndefined();
@@ -166,7 +166,7 @@ describe('Engine orchestration', () => {
   });
 
   it('stops at a failing step, writes the failure log, and does not run later steps', async () => {
-    const d = deps({ runBmadInstall: vi.fn(async () => ({ ok: false, bmadVersion: '6.1.2' })) });
+    const d = deps({ installMethod: vi.fn(async () => ({ ok: false, version: '6.1.2' })) });
     const engine = new Engine(config(), new EngineEmitter(), d);
     const result = await engine.start();
 
@@ -179,12 +179,12 @@ describe('Engine orchestration', () => {
   it('retry resumes from the failed step and skips already-completed steps', async () => {
     const scaffold = vi.fn(async () => 'created' as const);
     let installAttempt = 0;
-    const runBmadInstall = vi.fn(async () => {
+    const installMethod = vi.fn(async () => {
       installAttempt += 1;
-      return { ok: installAttempt > 1, bmadVersion: '6.1.2' }; // fail first, succeed on retry
+      return { ok: installAttempt > 1, version: '6.1.2' }; // fail first, succeed on retry
     });
     const runSelfCheck = vi.fn(async () => greenSummary);
-    const engine = new Engine(config(), new EngineEmitter(), deps({ scaffold, runBmadInstall, runSelfCheck }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ scaffold, installMethod, runSelfCheck }));
 
     const first = await engine.start();
     expect(first.ok).toBe(false);
@@ -195,7 +195,7 @@ describe('Engine orchestration', () => {
     expect(retried.ok).toBe(true);
     expect(retried.summary?.success).toBe(true);
     expect(scaffold).toHaveBeenCalledOnce(); // NOT re-run (already completed)
-    expect(runBmadInstall).toHaveBeenCalledTimes(2);
+    expect(installMethod).toHaveBeenCalledTimes(2);
     expect(runSelfCheck).toHaveBeenCalledOnce();
   });
 
@@ -302,7 +302,7 @@ describe('Engine orchestration', () => {
 
     expect(result.ok).toBe(false);
     expect(result.failedStep).toBe(StepId.ScaffoldGitInit);
-    expect(d.runBmadInstall).not.toHaveBeenCalled();
+    expect(d.installMethod).not.toHaveBeenCalled();
   });
 
   it('writes a failure log and stops when a step throws', async () => {
@@ -346,8 +346,8 @@ describe('Engine orchestration', () => {
 
   it('passes the failure event log (including the Failed event) to writeFailureLog', async () => {
     let captured: FailureLogEntry | undefined;
-    const failingInstall = vi.fn(async (opts) => {
-      opts.emitter.emit({
+    const failingInstall = vi.fn(async (ctx: MethodContext) => {
+      ctx.emitter.emit({
         id: 'x',
         phase: Phase.Install,
         step: StepId.InstallMethod,
@@ -356,7 +356,7 @@ describe('Engine orchestration', () => {
         level: 'error',
         timestamp: '2026-05-29T00:00:00.000Z',
       });
-      return { ok: false, bmadVersion: '6.1.2' };
+      return { ok: false, version: '6.1.2' };
     });
     const writeFailureLog = vi.fn(async (entry: FailureLogEntry) => {
       captured = entry;
@@ -365,7 +365,7 @@ describe('Engine orchestration', () => {
     const engine = new Engine(
       config(),
       new EngineEmitter(),
-      deps({ runBmadInstall: failingInstall, writeFailureLog }),
+      deps({ installMethod: failingInstall, writeFailureLog }),
     );
     await engine.start();
 

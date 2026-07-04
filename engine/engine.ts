@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type { EngineEmitter } from './emitter';
 import { Phase, StepId, Status, ErrorCode, type Config, type EngineCommands, type Level } from './contract';
 import { scaffold as defaultScaffold, type ScaffoldOptions, type ScaffoldOutcome } from './orchestrate/scaffold';
-import { runBmadInstall as defaultRunBmadInstall, type BmadInstallOptions, type BmadInstallResult } from './orchestrate/bmad-install';
 import { installAgentCli as defaultInstallAgentCli, eligibleAgentClis, type AgentCliOptions, type AgentCliResult } from './orchestrate/agent-cli';
 import { npxCliPath, npmCliPath } from './orchestrate/launch';
+import { exec as defaultExec } from './exec';
+import type { MethodContext, MethodInstallResult } from './method/provider';
+import { getMethod as resolveMethod } from './method/registry';
 import { runSelfCheck as defaultRunSelfCheck, type SelfCheckOptions } from './self-check';
 import { detectDependencies as defaultDetect, type DetectOptions, type DependencyState } from './provision/detect';
 import { provisionGitUnix as defaultProvisionGit, type ProvisionGitUnixOptions, type ProvisionGitResult } from './provision/git-unix';
@@ -19,7 +21,11 @@ export interface EngineDeps {
   detect: (opts: DetectOptions) => Promise<DependencyState>;
   provisionGit: (opts: ProvisionGitUnixOptions) => Promise<ProvisionGitResult>;
   scaffold: (opts: ScaffoldOptions) => Promise<ScaffoldOutcome>;
-  runBmadInstall: (opts: BmadInstallOptions) => Promise<BmadInstallResult>;
+  /**
+   * Install the selected method (`config.method`, default 'bmad'). The default dispatches through
+   * the method registry to that provider's `install`; tests inject a fake to skip a real install.
+   */
+  installMethod: (ctx: MethodContext) => Promise<MethodInstallResult>;
   installAgentCli: (opts: AgentCliOptions) => Promise<AgentCliResult>;
   runSelfCheck: (opts: SelfCheckOptions) => Promise<ValidationSummary>;
   writeFailureLog: (entry: FailureLogEntry) => Promise<string>;
@@ -31,7 +37,7 @@ const defaultDeps: EngineDeps = {
   detect: defaultDetect,
   provisionGit: defaultProvisionGit,
   scaffold: defaultScaffold,
-  runBmadInstall: defaultRunBmadInstall,
+  installMethod: (ctx) => resolveMethod(ctx.config.method).install(ctx),
   installAgentCli: defaultInstallAgentCli,
   runSelfCheck: defaultRunSelfCheck,
   writeFailureLog: (entry) => defaultWriteFailureLog(entry),
@@ -67,7 +73,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
 
   // Outputs threaded between steps.
   private scaffoldCreated = false;
-  private bmadInstalled = false;
+  private methodInstalled = false;
   private lastSummary: ValidationSummary | null = null;
 
   private readonly steps: Step[];
@@ -140,17 +146,20 @@ export class Engine implements EngineCommands<EngineRunResult> {
       {
         id: StepId.InstallMethod,
         run: async () => {
-          // Windows: `npx` is a `.cmd` shim that spawn(shell:false) can't find by bare name → ENOENT.
-          // The engine runs on the provisioned node (process.execPath), with npx-cli.js beside it, so
-          // invoke `node npx-cli.js …` instead. macOS/Linux keep the bare-`npx` default untouched.
-          const result = await this.deps.runBmadInstall({
+          // The `runner` is how the provider invokes npx. Windows: `npx` is a `.cmd` shim that
+          // spawn(shell:false) can't find by bare name → ENOENT, so run the provisioned node +
+          // npx-cli.js instead. macOS/Linux use the bare `npx` default.
+          const runner =
+            this.deps.platform === 'win32'
+              ? { command: process.execPath, prefixArgs: [npxCliPath(process.execPath)] }
+              : { command: 'npx', prefixArgs: [] };
+          const result = await this.deps.installMethod({
             config: this.config,
             emitter: this.emitter,
-            ...(this.deps.platform === 'win32'
-              ? { npxCommand: process.execPath, npxPrefixArgs: [npxCliPath(process.execPath)] }
-              : {}),
+            exec: defaultExec,
+            runner,
           });
-          this.bmadInstalled = result.ok;
+          this.methodInstalled = result.ok;
           return result.ok;
         },
       },
@@ -187,7 +196,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
         run: async () => {
           const summary = await this.deps.runSelfCheck({
             scaffoldCreated: this.scaffoldCreated,
-            bmadInstalled: this.bmadInstalled,
+            bmadInstalled: this.methodInstalled,
             // Where the BMad manifest lives — self-check reads the ACTUAL installed version (FR26).
             projectDir: this.config.projectDir,
             // Thread the requested eligible CLI descriptors (SSOT accessor over config.installCli)

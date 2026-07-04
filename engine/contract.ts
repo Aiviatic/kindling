@@ -98,6 +98,12 @@ export interface Config {
   /** Selected BMad modules → `--modules`. */
   modules: string[];
   /**
+   * Which project method to install (see engine/method/registry.ts). Absent ⇒ `'bmad'`, the
+   * recommended default. A pluggable seam so BMad can become optional (a "none" provider) and
+   * gain alternatives without changing the engine — see docs/method-provider-design.md.
+   */
+  method?: string;
+  /**
    * Picked tool ids the user opted to install an agent CLI for (Story 6.1). Only `claude-code`
    * and `codex` are eligible (id→package table in orchestrate/agent-cli.ts); any other id is
    * ignored. Absent/empty ⇒ the install-agent-cli step is a no-op. Story 6.2's Configure UI
