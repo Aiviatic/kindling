@@ -11,6 +11,26 @@ It's open source on purpose: the very first thing Kindling does is run a script 
 your machine, so you should be able to read exactly what that script does. See
 [SECURITY.md](SECURITY.md) for the security model.
 
+## What it looks like
+
+Everything happens in your browser, in plain language. Here's the whole journey:
+
+**1. A quick intro to what's about to happen.**
+
+![Kindling's intro screen](docs/screenshots/intro.png)
+
+**2. Name your project and pick your tools (sensible defaults are pre-filled).**
+
+![Kindling's configure screen](docs/screenshots/configure.png)
+
+**3. Honest, never-frozen progress while it works.**
+
+![Kindling's progress screen](docs/screenshots/progress.png)
+
+**4. A friendly summary of what got set up, and how to start building.**
+
+![Kindling's welcome screen](docs/screenshots/welcome.png)
+
 ## How it works
 
 Three layers, so the scary parts happen where they can be explained:
