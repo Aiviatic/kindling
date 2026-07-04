@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 
 $KindlingNodeVersion = '24.16.0'  # == pins.node
-$KindlingVersion     = '0.1.7'    # == pins.kindling
+$KindlingVersion     = '0.1.8'    # == pins.kindling
 $NodeFloorMajor      = 20
 
 # --- Inline helpers (were bootstrap/lib/common.ps1; inlined for the file-less delivery) ----------
