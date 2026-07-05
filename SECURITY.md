@@ -48,6 +48,13 @@ The bootstrap entry points are plain, readable scripts in [`bootstrap/`](bootstr
   from a path-traversal-guarded directory.
 - **No secrets in the repo or the published package.** The lead-capture endpoint's
   webhook is a deploy-time secret, never committed.
+- **Pinned versions, and no install scripts on the framework install.** Kindling
+  installs a specific tested version of BMad (not `@latest`), and runs that install
+  with `--ignore-scripts`, so the pre/post-install lifecycle scripts on BMad and its
+  dependency tree do not execute. That is the main entry point for npm supply-chain
+  worms, and it is closed. (The optional AI-tool CLIs, from Anthropic and OpenAI, do
+  run their own install scripts, since some need a post-install step to fetch a native
+  binary.)
 
 ## Known hardening roadmap
 

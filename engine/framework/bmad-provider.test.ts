@@ -30,7 +30,8 @@ describe('bmadProvider', () => {
     expect(r).toEqual({ ok: true, version: '6.9.0' });
     const [cmd, args] = exec.mock.calls[0];
     expect(cmd).toBe('npx');
-    expect(args[0]).toBe('bmad-method@6.9.0');
+    expect(args[0]).toBe('--ignore-scripts'); // supply-chain: no lifecycle scripts on the dep tree
+    expect(args[1]).toBe('bmad-method@6.9.0');
     expect(args).toContain('install');
   });
 
@@ -45,7 +46,8 @@ describe('bmadProvider', () => {
     const [cmd, args] = exec.mock.calls[0];
     expect(cmd).toBe('/node');
     expect(args[0]).toBe('/npx-cli.js');
-    expect(args[1]).toBe('bmad-method@6.9.0');
+    expect(args[1]).toBe('--ignore-scripts');
+    expect(args[2]).toBe('bmad-method@6.9.0');
   });
 
   it('returns ok:false on a non-zero install exit', async () => {

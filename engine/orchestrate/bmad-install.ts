@@ -119,10 +119,17 @@ export async function runBmadInstall(opts: BmadInstallOptions): Promise<BmadInst
     }
     // Compose inside the try so a composition error (e.g. comma in a module name) still
     // reaches a terminal Failed event.
+    // `--ignore-scripts` (an npx flag, before the package spec) suppresses pre/postinstall lifecycle
+    // scripts on bmad-method AND its transitive dependency tree — the main execution vector for npm
+    // supply-chain worms (Shai-Hulud et al.). Verified that bmad-method installs correctly with it
+    // (its install is a file copy, not a lifecycle script). npx still runs bmad-method's bin, so the
+    // install itself is unaffected. The agent-CLI install deliberately does NOT use this: claude-code
+    // needs its postinstall to fetch a native binary (and Anthropic/OpenAI are low-risk publishers).
     // On Windows npxPrefixArgs is `[npxCliPath(node)]` and npx is the provisioned node, so the
-    // effective invocation is `node npx-cli.js bmad-method@<tag> …` (shell:false-safe). Empty elsewhere.
+    // effective invocation is `node npx-cli.js --ignore-scripts bmad-method@<tag> …` (shell:false-safe).
     const args = [
       ...(opts.npxPrefixArgs ?? []),
+      '--ignore-scripts',
       `bmad-method@${versionTag}`,
       ...composeInstallArgs(opts.config, action),
     ];

@@ -35,7 +35,8 @@ describe('runBmadInstall', () => {
     expect(exec).toHaveBeenCalledOnce();
     const [cmd, args] = exec.mock.calls[0];
     expect(cmd).toBe('npx');
-    expect(args[0]).toBe('bmad-method@6.1.2'); // the version pin IS the npx package spec
+    expect(args[0]).toBe('--ignore-scripts'); // supply-chain: no lifecycle scripts on the dep tree
+    expect(args[1]).toBe('bmad-method@6.1.2'); // the version pin IS the npx package spec
     expect(args).toContain('install');
     expect(args).not.toContain('--pin'); // not a version flag on the real CLI
     expect(args).not.toContain('--action'); // fresh project (default detect → false)
@@ -72,7 +73,7 @@ describe('runBmadInstall', () => {
     });
 
     const [, args] = exec.mock.calls[0];
-    expect(args[0]).toBe('bmad-method@latest'); // the @latest tag, NOT the pin
+    expect(args[1]).toBe('bmad-method@latest'); // the @latest tag, NOT the pin
     expect(args).not.toContain('bmad-method@6.1.2');
     expect(args).toContain('--action');
     expect(args[args.indexOf('--action') + 1]).toBe('update'); // forced update
@@ -85,7 +86,7 @@ describe('runBmadInstall', () => {
     await runBmadInstall({ config: config(), emitter: new EngineEmitter(), exec, bmadAlreadyInstalled: async () => false });
     const [cmd, args] = exec.mock.calls[0];
     expect(cmd).toBe('npx');
-    expect(args[0]).toBe('bmad-method@6.1.2'); // the pin, never @latest
+    expect(args[1]).toBe('bmad-method@6.1.2'); // the pin, never @latest
     expect(args).toContain('install');
     expect(args).not.toContain('--action'); // fresh → no forced update
   });
@@ -94,7 +95,7 @@ describe('runBmadInstall', () => {
     const exec = vi.fn(async (_cmd: string, _args: string[]) => ok);
     await runBmadInstall({ config: config(), emitter: new EngineEmitter(), exec, bmadAlreadyInstalled: async () => true });
     const [, args] = exec.mock.calls[0];
-    expect(args[0]).toBe('bmad-method@6.1.2'); // still the pin
+    expect(args[1]).toBe('bmad-method@6.1.2'); // still the pin
     expect(args).toContain('--action');
     expect(args[args.indexOf('--action') + 1]).toBe('update');
   });
@@ -103,7 +104,7 @@ describe('runBmadInstall', () => {
     const exec = vi.fn(async (_cmd: string, _args: string[]) => ok);
     await runBmadInstall({ config: config({ bmadTarget: 'pinned' }), emitter: new EngineEmitter(), exec, bmadAlreadyInstalled: async () => false });
     const [, args] = exec.mock.calls[0];
-    expect(args[0]).toBe('bmad-method@6.1.2');
+    expect(args[1]).toBe('bmad-method@6.1.2');
     expect(args).not.toContain('--action');
   });
 
@@ -117,7 +118,7 @@ describe('runBmadInstall', () => {
     });
     // The notPinned guard is pinned-only, so a TODO pin must NOT short-circuit the latest path.
     expect(exec).toHaveBeenCalledOnce();
-    expect(exec.mock.calls[0][1][0]).toBe('bmad-method@latest');
+    expect(exec.mock.calls[0][1][1]).toBe('bmad-method@latest');
     expect(result).toEqual({ ok: true, bmadVersion: 'latest' });
   });
 
@@ -172,7 +173,8 @@ describe('runBmadInstall', () => {
     const [cmd, args] = exec.mock.calls[0];
     expect(cmd).toBe('/abs/node');
     expect(args[0]).toBe('/abs/node_modules/npm/bin/npx-cli.js'); // prefix comes first
-    expect(args[1]).toBe('bmad-method@6.1.2'); // then the package spec, unchanged
+    expect(args[1]).toBe('--ignore-scripts'); // then the npx flag
+    expect(args[2]).toBe('bmad-method@6.1.2'); // then the package spec
     expect(args).toContain('install');
   });
 
