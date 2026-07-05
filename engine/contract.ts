@@ -19,7 +19,7 @@ export const StepId = {
   ProvisionGit: 'provision.git',
   ProvisionXcodeClt: 'provision.xcode-clt',
   ScaffoldGitInit: 'scaffold.git-init',
-  InstallMethod: 'install.method',
+  InstallFramework: 'install.framework',
   InstallAgentCli: 'install.agent-cli',
   FinalizeSelfCheck: 'finalize.self-check',
 } as const;
@@ -37,7 +37,7 @@ export const NON_FATAL_STEPS: ReadonlySet<StepId> = new Set([StepId.InstallAgent
 /**
  * Install sections, grouped by what the work touches — the two-part Progress grouping. `System` is
  * machine-wide (Node, Git, and the global agent-CLI installs: install once, skip if present);
- * `Project` is scoped to the folder (scaffold, the method install, and the final check). The step
+ * `Project` is scoped to the folder (scaffold, the framework install, and the final check). The step
  * order matches this (all system steps run before all project steps). See
  * docs/install-architecture-design.md.
  */
@@ -57,7 +57,7 @@ export const STEP_SECTION: Record<StepId, Section> = {
   [StepId.ProvisionXcodeClt]: Section.System,
   [StepId.InstallAgentCli]: Section.System,
   [StepId.ScaffoldGitInit]: Section.Project,
-  [StepId.InstallMethod]: Section.Project,
+  [StepId.InstallFramework]: Section.Project,
   [StepId.FinalizeSelfCheck]: Section.Project,
 };
 
@@ -125,11 +125,11 @@ export interface Config {
   /** Selected BMad modules → `--modules`. */
   modules: string[];
   /**
-   * Which project method to install (see engine/method/registry.ts). Absent ⇒ `'bmad'`, the
+   * Which project framework to install (see engine/framework/registry.ts). Absent ⇒ `'bmad'`, the
    * recommended default. A pluggable seam so BMad can become optional (a "none" provider) and
    * gain alternatives without changing the engine — see docs/install-architecture-design.md.
    */
-  method?: string;
+  framework?: string;
   /**
    * Picked tool ids the user opted to install an agent CLI for (Story 6.1). Only `claude-code`
    * and `codex` are eligible (id→package table in orchestrate/agent-cli.ts); any other id is

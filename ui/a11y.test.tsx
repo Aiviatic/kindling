@@ -88,7 +88,7 @@ describe('accessibility conformance (axe) — every screen', () => {
     act(() => source.emit(JSON.stringify(evt({ step: StepId.ProvisionNode, status: Status.Done }))));
     act(() => source.emit(JSON.stringify(evt({ step: StepId.ProvisionGit, status: Status.Failed }))));
     act(() => source.emit(JSON.stringify(evt({ step: StepId.ScaffoldGitInit, status: Status.Queued }))));
-    act(() => source.emit(JSON.stringify(evt({ step: StepId.InstallMethod, status: Status.Working, pct: 40 }))));
+    act(() => source.emit(JSON.stringify(evt({ step: StepId.InstallFramework, status: Status.Working, pct: 40 }))));
     await expectNoViolations(container);
   });
 

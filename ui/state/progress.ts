@@ -49,7 +49,7 @@ export const STATUS_VIEW: Record<Status, StatusView> = {
 // Steps that are legitimately slow (a big download / a macOS system install). While one of
 // these is Working we show indeterminate ACTIVITY rather than a stuck percentage, so the UI
 // never looks frozen (FR — honest progress).
-const SLOW_STEPS: ReadonlySet<StepId> = new Set([StepId.InstallMethod, StepId.ProvisionXcodeClt]);
+const SLOW_STEPS: ReadonlySet<StepId> = new Set([StepId.InstallFramework, StepId.ProvisionXcodeClt]);
 
 export function isSlowStep(id: StepId): boolean {
   return SLOW_STEPS.has(id);

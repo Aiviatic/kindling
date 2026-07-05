@@ -6,7 +6,7 @@ import type { ValidationSummary } from './validation-summary';
 import type { SelfCheckOptions } from './self-check';
 import type { FailureLogEntry } from './log';
 import { npxCliPath, npmCliPath } from './orchestrate/launch';
-import type { MethodContext } from './method/provider';
+import type { FrameworkContext } from './framework/provider';
 import type { AgentCliOptions } from './orchestrate/agent-cli';
 
 function config(): Config {
@@ -26,7 +26,7 @@ const greenSummary: ValidationSummary = {
   arch: 'x64',
   osVersion: '6.0.0',
   projectDir: '/tmp/proj',
-  method: 'bmad',
+  framework: 'bmad',
   node: { present: true, version: 'v24.16.0', satisfiesFloor: true },
   git: { present: true, version: 'git version 2.43.0' },
   bmad: { pinnedVersion: '6.1.2', installed: true, installedVersion: '6.1.2' },
@@ -46,7 +46,7 @@ function deps(over: Partial<EngineDeps> = {}): Partial<EngineDeps> {
     provisionGit: vi.fn(async () => ({ ok: true })),
     platform: 'linux',
     scaffold: vi.fn(async () => 'created' as const),
-    installMethod: vi.fn(async () => ({ ok: true, version: '6.1.2' })),
+    installFramework: vi.fn(async () => ({ ok: true, version: '6.1.2' })),
     installAgentCli: vi.fn(async () => ({ ok: true, installed: [], skipped: [], failed: [] })),
     runSelfCheck: vi.fn(async () => greenSummary),
     writeFailureLog: vi.fn(async () => '/tmp/.kindling/logs/report.log'),
@@ -63,7 +63,7 @@ describe('Engine orchestration', () => {
     expect(result.ok).toBe(true);
     expect(result.summary?.success).toBe(true);
     expect(d.scaffold).toHaveBeenCalledOnce();
-    expect(d.installMethod).toHaveBeenCalledOnce();
+    expect(d.installFramework).toHaveBeenCalledOnce();
     expect(d.runSelfCheck).toHaveBeenCalledOnce();
     expect(d.writeFailureLog).not.toHaveBeenCalled();
   });
@@ -127,13 +127,13 @@ describe('Engine orchestration', () => {
     expect(result.failedStep).toBe(StepId.ProvisionGit);
   });
 
-  it('Windows: threads the node + npx-cli.js runner to the method install (no bare npx.cmd)', async () => {
-    const installMethod = vi.fn(async (_ctx: MethodContext) => ({ ok: true, version: '6.1.2' }));
-    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'win32', installMethod }));
+  it('Windows: threads the node + npx-cli.js runner to the framework install (no bare npx.cmd)', async () => {
+    const installFramework = vi.fn(async (_ctx: FrameworkContext) => ({ ok: true, version: '6.1.2' }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'win32', installFramework }));
     await engine.start();
 
-    expect(installMethod).toHaveBeenCalledOnce();
-    const ctx = installMethod.mock.calls[0][0];
+    expect(installFramework).toHaveBeenCalledOnce();
+    const ctx = installFramework.mock.calls[0][0];
     expect(ctx.runner.command).toBe(process.execPath);
     expect(ctx.runner.prefixArgs).toEqual([npxCliPath(process.execPath)]);
   });
@@ -152,12 +152,12 @@ describe('Engine orchestration', () => {
   });
 
   it('non-Windows: uses the plain npx runner + passes no npm Windows wiring (macOS/Linux unchanged)', async () => {
-    const installMethod = vi.fn(async (_ctx: MethodContext) => ({ ok: true, version: '6.1.2' }));
+    const installFramework = vi.fn(async (_ctx: FrameworkContext) => ({ ok: true, version: '6.1.2' }));
     const installAgentCli = vi.fn(async (_opts: AgentCliOptions) => ({ ok: true, installed: [], skipped: [], failed: [] }));
-    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'linux', installMethod, installAgentCli }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ platform: 'linux', installFramework, installAgentCli }));
     await engine.start();
 
-    const ctx = installMethod.mock.calls[0][0];
+    const ctx = installFramework.mock.calls[0][0];
     expect(ctx.runner.command).toBe('npx');
     expect(ctx.runner.prefixArgs).toEqual([]);
     const cliOpts = installAgentCli.mock.calls[0][0];
@@ -167,12 +167,12 @@ describe('Engine orchestration', () => {
   });
 
   it('stops at a failing step, writes the failure log, and does not run later steps', async () => {
-    const d = deps({ installMethod: vi.fn(async () => ({ ok: false, version: '6.1.2' })) });
+    const d = deps({ installFramework: vi.fn(async () => ({ ok: false, version: '6.1.2' })) });
     const engine = new Engine(config(), new EngineEmitter(), d);
     const result = await engine.start();
 
     expect(result.ok).toBe(false);
-    expect(result.failedStep).toBe(StepId.InstallMethod);
+    expect(result.failedStep).toBe(StepId.InstallFramework);
     expect(d.writeFailureLog).toHaveBeenCalledOnce();
     expect(d.runSelfCheck).not.toHaveBeenCalled(); // later step skipped
   });
@@ -180,23 +180,23 @@ describe('Engine orchestration', () => {
   it('retry resumes from the failed step and skips already-completed steps', async () => {
     const scaffold = vi.fn(async () => 'created' as const);
     let installAttempt = 0;
-    const installMethod = vi.fn(async () => {
+    const installFramework = vi.fn(async () => {
       installAttempt += 1;
       return { ok: installAttempt > 1, version: '6.1.2' }; // fail first, succeed on retry
     });
     const runSelfCheck = vi.fn(async () => greenSummary);
-    const engine = new Engine(config(), new EngineEmitter(), deps({ scaffold, installMethod, runSelfCheck }));
+    const engine = new Engine(config(), new EngineEmitter(), deps({ scaffold, installFramework, runSelfCheck }));
 
     const first = await engine.start();
     expect(first.ok).toBe(false);
-    expect(first.failedStep).toBe(StepId.InstallMethod);
+    expect(first.failedStep).toBe(StepId.InstallFramework);
     expect(scaffold).toHaveBeenCalledOnce();
 
-    const retried = await engine.retry(StepId.InstallMethod);
+    const retried = await engine.retry(StepId.InstallFramework);
     expect(retried.ok).toBe(true);
     expect(retried.summary?.success).toBe(true);
     expect(scaffold).toHaveBeenCalledOnce(); // NOT re-run (already completed)
-    expect(installMethod).toHaveBeenCalledTimes(2);
+    expect(installFramework).toHaveBeenCalledTimes(2);
     expect(runSelfCheck).toHaveBeenCalledOnce();
   });
 
@@ -303,7 +303,7 @@ describe('Engine orchestration', () => {
 
     expect(result.ok).toBe(false);
     expect(result.failedStep).toBe(StepId.ScaffoldGitInit);
-    expect(d.installMethod).not.toHaveBeenCalled();
+    expect(d.installFramework).not.toHaveBeenCalled();
   });
 
   it('writes a failure log and stops when a step throws', async () => {
@@ -347,11 +347,11 @@ describe('Engine orchestration', () => {
 
   it('passes the failure event log (including the Failed event) to writeFailureLog', async () => {
     let captured: FailureLogEntry | undefined;
-    const failingInstall = vi.fn(async (ctx: MethodContext) => {
+    const failingInstall = vi.fn(async (ctx: FrameworkContext) => {
       ctx.emitter.emit({
         id: 'x',
         phase: Phase.Install,
-        step: StepId.InstallMethod,
+        step: StepId.InstallFramework,
         status: Status.Failed,
         humanMessage: 'install failed',
         level: 'error',
@@ -366,11 +366,11 @@ describe('Engine orchestration', () => {
     const engine = new Engine(
       config(),
       new EngineEmitter(),
-      deps({ installMethod: failingInstall, writeFailureLog }),
+      deps({ installFramework: failingInstall, writeFailureLog }),
     );
     await engine.start();
 
-    expect(captured?.step).toBe(StepId.InstallMethod);
+    expect(captured?.step).toBe(StepId.InstallFramework);
     expect(captured?.events.some((e) => e.status === Status.Failed)).toBe(true);
   });
 });

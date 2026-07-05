@@ -51,7 +51,7 @@ function renderFlow(startImpl: UiCommands['start'] = vi.fn().mockResolvedValue(u
 const evt: KindlingEvent = {
   id: 'e1',
   phase: Phase.Install,
-  step: StepId.InstallMethod,
+  step: StepId.InstallFramework,
   status: Status.Working,
   humanMessage: 'Installing BMad…',
   level: 'info',

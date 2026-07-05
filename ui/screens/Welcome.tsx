@@ -21,7 +21,7 @@ function parseSummary(
 ): {
   cli: CliPresence[];
   bmad: ValidationSummary['bmad'];
-  method?: string;
+  framework?: string;
   node?: ValidationSummary['node'];
   git?: ValidationSummary['git'];
   projectDir?: string;
@@ -32,7 +32,7 @@ function parseSummary(
     const parsed = JSON.parse(json) as {
       cli?: CliPresence[];
       bmad?: ValidationSummary['bmad'];
-      method?: unknown;
+      framework?: unknown;
       node?: ValidationSummary['node'];
       git?: ValidationSummary['git'];
       projectDir?: unknown;
@@ -43,8 +43,8 @@ function parseSummary(
       // Read defensively for the versions table + the honest BMad chip; a legacy/absent shape simply
       // yields fewer rows (bmadVersionLabel reads only `bmad.installedVersion`).
       bmad: parsed.bmad as ValidationSummary['bmad'],
-      // The chosen method id — 'none' hides all BMad-specific copy. Absent (legacy) ⇒ BMad shown.
-      method: typeof parsed.method === 'string' ? parsed.method : undefined,
+      // The chosen framework id — 'none' hides all BMad-specific copy. Absent (legacy) ⇒ BMad shown.
+      framework: typeof parsed.framework === 'string' ? parsed.framework : undefined,
       node: parsed.node,
       git: parsed.git,
       projectDir: typeof parsed.projectDir === 'string' ? parsed.projectDir : undefined,
@@ -159,8 +159,8 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
   // Honest version chip (Story 7.2 / AC-6): reflect the ACTUAL installed version for a latest run;
   // fall back to the pinned chip for the default (unchanged) run or an absent installedVersion.
   const versionChip = bmadVersionLabel(parsed, pins.bmad);
-  // "No framework" hides all BMad-specific copy. Absent method (legacy summary) ⇒ BMad, unchanged.
-  const hasBmad = parsed?.method !== 'none';
+  // "No framework" hides all BMad-specific copy. Absent framework (legacy summary) ⇒ BMad, unchanged.
+  const hasBmad = parsed?.framework !== 'none';
 
   return (
     <section className="screen screen--welcome" aria-labelledby="welcome-h">

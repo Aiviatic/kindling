@@ -44,7 +44,7 @@ describe('runSelfCheck', () => {
     });
 
     expect(summary.success).toBe(true);
-    expect(summary.method).toBe('bmad'); // defaults to bmad
+    expect(summary.framework).toBe('bmad'); // defaults to bmad
     expect(summary.bmad.installed).toBe(true);
     expect(summary.node.satisfiesFloor).toBe(true);
     expect(summary.git.present).toBe(true);
@@ -53,12 +53,12 @@ describe('runSelfCheck', () => {
     expect(events.every((e) => e.step === StepId.FinalizeSelfCheck)).toBe(true);
   });
 
-  it("method 'none': BMad is not installed but the run still succeeds (No framework)", async () => {
+  it("framework 'none': BMad is not installed but the run still succeeds (No framework)", async () => {
     const emitter = new EngineEmitter();
     const summary = await runSelfCheck({
       scaffoldCreated: true,
-      bmadInstalled: true, // the no-op method "install" succeeded
-      method: 'none',
+      bmadInstalled: true, // the no-op framework "install" succeeded
+      framework: 'none',
       projectDir: '/tmp/proj',
       readInstalledBmadVersion: async () => null,
       emitter,
@@ -66,8 +66,8 @@ describe('runSelfCheck', () => {
       platform,
     });
 
-    expect(summary.success).toBe(true); // node + git + scaffold + method-ok, no BMad required
-    expect(summary.method).toBe('none');
+    expect(summary.success).toBe(true); // node + git + scaffold + framework-ok, no BMad required
+    expect(summary.framework).toBe('none');
     expect(summary.bmad.installed).toBe(false); // no BMad on disk for a no-framework project
   });
 

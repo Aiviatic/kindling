@@ -1,16 +1,16 @@
-// UI presentation list for the project-method picker. Kept separate from the engine registry
-// (engine/method/registry.ts) because that pulls node-only code into the browser bundle; the ids
+// UI presentation list for the project-framework picker. Kept separate from the engine registry
+// (engine/framework/registry.ts) because that pulls node-only code into the browser bundle; the ids
 // here must match the engine's provider ids. See docs/install-architecture-design.md.
-export interface MethodOption {
+export interface FrameworkOption {
   id: string;
   name: string;
   description: string;
   recommended: boolean;
 }
 
-export const DEFAULT_METHOD = 'bmad';
+export const DEFAULT_FRAMEWORK = 'bmad';
 
-export const METHOD_OPTIONS: MethodOption[] = [
+export const FRAMEWORK_OPTIONS: FrameworkOption[] = [
   {
     id: 'bmad',
     name: 'BMad Method',

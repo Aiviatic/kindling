@@ -11,7 +11,7 @@ export const stepMessages: Record<StepId, string> = {
     'macOS is installing some developer tools. A system dialog popped up: click Install. ' +
     'This is completely normal and usually takes about 5 minutes. You can grab a coffee.',
   [StepId.ScaffoldGitInit]: 'Creating your project folder and starting its history.',
-  [StepId.InstallMethod]:
+  [StepId.InstallFramework]:
     'Installing BMad - the toolkit that powers your project. This is a sizeable download, ' +
     'so it can take a couple of minutes. Nothing is stuck; hang tight.',
   [StepId.InstallAgentCli]:

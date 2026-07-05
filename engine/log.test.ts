@@ -17,7 +17,7 @@ const events: KindlingEvent[] = [
   {
     id: '1',
     phase: Phase.Install,
-    step: StepId.InstallMethod,
+    step: StepId.InstallFramework,
     status: Status.Failed,
     humanMessage: 'install failed',
     level: 'error',
@@ -28,7 +28,7 @@ const events: KindlingEvent[] = [
 describe('writeFailureLog', () => {
   it('writes a report file and returns its path', async () => {
     const path = await writeFailureLog(
-      { step: StepId.InstallMethod, error: 'boom\n  at x', events },
+      { step: StepId.InstallFramework, error: 'boom\n  at x', events },
       { dir: tmp, now: () => '2026-05-29T01:02:03.456Z' },
     );
     const entries = await readdir(tmp);
@@ -40,7 +40,7 @@ describe('writeFailureLog', () => {
     expect(basename(path)).not.toContain(':');
 
     const body = await readFile(path, 'utf8');
-    expect(body).toContain('Failed step: install.method');
+    expect(body).toContain('Failed step: install.framework');
     expect(body).toContain('boom');
     expect(body).toContain('install failed'); // event humanMessage included
   });
@@ -48,7 +48,7 @@ describe('writeFailureLog', () => {
   it('does not leak the process environment (no secrets)', async () => {
     process.env.KINDLING_TEST_SECRET = 'super-secret-value';
     try {
-      const path = await writeFailureLog({ step: StepId.InstallMethod, error: 'e', events }, { dir: tmp });
+      const path = await writeFailureLog({ step: StepId.InstallFramework, error: 'e', events }, { dir: tmp });
       const body = await readFile(path, 'utf8');
       expect(body).not.toContain('super-secret-value');
     } finally {

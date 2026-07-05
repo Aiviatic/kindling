@@ -9,12 +9,12 @@ const config: Config = {
   projectName: 'proj',
   ides: ['claude-code'],
   modules: [],
-  method: 'none',
+  framework: 'none',
   pins: { node: '24', bmad: '6.9.0', kindling: '0.0.0' },
 };
 
 describe('noneProvider', () => {
-  it('installs nothing, emits a Done on install.method, and succeeds without touching exec', async () => {
+  it('installs nothing, emits a Done on install.framework, and succeeds without touching exec', async () => {
     const emitter = new EngineEmitter();
     const seen: KindlingEvent[] = [];
     emitter.on((e) => seen.push(e));
@@ -29,7 +29,7 @@ describe('noneProvider', () => {
 
     expect(r).toEqual({ ok: true });
     expect(exec).not.toHaveBeenCalled(); // nothing installed
-    const done = seen.find((e) => e.step === StepId.InstallMethod && e.status === Status.Done);
+    const done = seen.find((e) => e.step === StepId.InstallFramework && e.status === Status.Done);
     expect(done).toBeDefined();
   });
 });

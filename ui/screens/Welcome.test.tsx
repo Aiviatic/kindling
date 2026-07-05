@@ -60,8 +60,8 @@ describe('<Welcome>', () => {
     expect(screen.getByText(pins.bmad)).toBeInTheDocument();
   });
 
-  it("method 'none' hides all BMad-specific copy (no version row, no /bmad-help)", () => {
-    const noneSummary = JSON.stringify({ schemaVersion: 4, success: true, cli: [], method: 'none' });
+  it("framework 'none' hides all BMad-specific copy (no version row, no /bmad-help)", () => {
+    const noneSummary = JSON.stringify({ schemaVersion: 4, success: true, cli: [], framework: 'none' });
     renderWelcome(vi.fn(), noneSummary);
     expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
     // No BMad Method row, no pinned version, no /bmad-help hint.

@@ -53,22 +53,22 @@ const progressFrames = [
   ev({ step: StepId.ProvisionGit, status: Status.Done, humanMessage: 'Git is ready.' }),
   ev({ step: StepId.InstallAgentCli, status: Status.Done, humanMessage: 'Installed the Claude Code CLI.' }),
   ev({ step: StepId.ScaffoldGitInit, status: Status.Done, humanMessage: 'Created your project and made the first commit.' }),
-  ev({ step: StepId.InstallMethod, status: Status.Working, pct: 60, humanMessage: 'Installing BMad into your project…' }),
+  ev({ step: StepId.InstallFramework, status: Status.Working, pct: 60, humanMessage: 'Installing BMad into your project…' }),
   ev({ step: StepId.FinalizeSelfCheck, status: Status.Queued, humanMessage: 'Next: check everything over.' }),
 ];
 
-// `?method=none` renders the No-framework Welcome (no BMad row/guidance) for a visual check.
-function welcomeSummary(method: string): string {
+// `?framework=none` renders the No-framework Welcome (no BMad row/guidance) for a visual check.
+function welcomeSummary(framework: string): string {
   return JSON.stringify({
     schemaVersion: 4,
     success: true,
     projectDir: '~/My Projects/My Project',
     os: 'darwin',
-    method,
+    framework,
     node: { present: true, version: '24.16.0', satisfiesFloor: true },
     git: { present: true, version: '2.45.2' },
     bmad:
-      method === 'bmad'
+      framework === 'bmad'
         ? { pinnedVersion: pins.bmad, installed: true, installedVersion: pins.bmad }
         : { pinnedVersion: pins.bmad, installed: false, installedVersion: null },
     cli: [
@@ -76,9 +76,9 @@ function welcomeSummary(method: string): string {
     ],
   });
 }
-function welcomeFrames(method: string) {
+function welcomeFrames(framework: string) {
   return [
-    ev({ step: StepId.FinalizeSelfCheck, status: Status.Done, humanMessage: 'All set.', summaryJson: welcomeSummary(method) }),
+    ev({ step: StepId.FinalizeSelfCheck, status: Status.Done, humanMessage: 'All set.', summaryJson: welcomeSummary(framework) }),
   ];
 }
 
@@ -95,9 +95,9 @@ function screenFor(name: string) {
         </InstallerProvider>
       );
     case 'welcome': {
-      const method = new URLSearchParams(location.search).get('method') ?? 'bmad';
+      const framework = new URLSearchParams(location.search).get('framework') ?? 'bmad';
       return (
-        <InstallerProvider EventSourceCtor={() => new ScriptedEventSource(welcomeFrames(method))}>
+        <InstallerProvider EventSourceCtor={() => new ScriptedEventSource(welcomeFrames(framework))}>
           <Welcome pins={pins} />
         </InstallerProvider>
       );

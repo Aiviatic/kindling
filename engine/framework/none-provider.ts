@@ -1,20 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { Phase, StepId, Status } from '../contract';
-import type { MethodProvider, MethodContext, MethodInstallResult } from './provider';
+import type { FrameworkProvider, FrameworkContext, FrameworkInstallResult } from './provider';
 
 /**
- * The "No framework" method: installs nothing. The project is just the scaffolded folder + git and
+ * The "No framework" framework: installs nothing. The project is just the scaffolded folder + git and
  * whatever AI-tool CLIs the user opted into (those run in the system section). Emits a single Done
- * on the install.method step so the project section honestly shows the choice, then succeeds.
+ * on the install.framework step so the project section honestly shows the choice, then succeeds.
  */
-export const noneProvider: MethodProvider = {
+export const noneProvider: FrameworkProvider = {
   id: 'none',
   label: 'No framework',
-  async install(ctx: MethodContext): Promise<MethodInstallResult> {
+  async install(ctx: FrameworkContext): Promise<FrameworkInstallResult> {
     ctx.emitter.emit({
       id: randomUUID(),
       phase: Phase.Install,
-      step: StepId.InstallMethod,
+      step: StepId.InstallFramework,
       status: Status.Done,
       humanMessage: 'No framework selected — your project is a clean starting point.',
       level: 'info',

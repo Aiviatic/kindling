@@ -7,8 +7,8 @@
 // v3 (Story 7.1): added `bmad.installedVersion` — the ACTUAL on-disk BMad version read from the
 // manifest (FR26), distinct from the requested `bmad.pinnedVersion`. Same single-frozen-build
 // safety: a v2 summary pasted into a v3 Validation Page reads as `malformed`.
-// v4 (method providers): added `method` (the chosen method id, e.g. 'bmad'|'none'); `success` now
-// gates on the method INSTALL step succeeding, not on BMad specifically (so "No framework" can pass).
+// v4 (framework providers): added `framework` (the chosen framework id, e.g. 'bmad'|'none'); `success` now
+// gates on the framework INSTALL step succeeding, not on BMad specifically (so "No framework" can pass).
 export const SCHEMA_VERSION = 4;
 
 /** Node runtime floor (BMad's hard requirement). */
@@ -37,16 +37,16 @@ export interface ValidationSummary {
   osVersion: string;
   /** The project directory the setup targeted — surfaced on the Welcome screen as "where is my project". */
   projectDir: string;
-  /** The chosen project method id (`config.method`, default 'bmad'; 'none' = no framework). */
-  method: string;
+  /** The chosen project framework id (`config.framework`, default 'bmad'; 'none' = no framework). */
+  framework: string;
   node: { present: boolean; version: string | null; satisfiesFloor: boolean };
   git: { present: boolean; version: string | null };
   /**
    * BMad-specific facts. `pinnedVersion` = the REQUESTED cohort pin (`pins.bmad`); `installed` =
-   * BMad is on disk (only true when the method IS bmad and it installed); `installedVersion` (FR26)
+   * BMad is on disk (only true when the framework IS bmad and it installed); `installedVersion` (FR26)
    * = the ACTUAL version read from the manifest — `null` when the manifest is absent/unreadable
-   * (honest "couldn't read disk reality", never a false pin). For a non-bmad method `installed`
-   * is false. The consumers gate BMad-specific UI on `method === 'bmad'` / `bmad.installed`.
+   * (honest "couldn't read disk reality", never a false pin). For a non-bmad framework `installed`
+   * is false. The consumers gate BMad-specific UI on `framework === 'bmad'` / `bmad.installed`.
    */
   bmad: { pinnedVersion: string; installed: boolean; installedVersion: string | null };
   scaffold: { created: boolean };
@@ -62,10 +62,10 @@ export interface ValidationFacts {
   arch: string;
   osVersion: string;
   projectDir: string;
-  /** Chosen method id (drives `summary.method`). */
-  method: string;
-  /** The method INSTALL step succeeded — the gate for `success` (for 'none' this is trivially true). */
-  methodInstalled: boolean;
+  /** Chosen framework id (drives `summary.framework`). */
+  framework: string;
+  /** The framework INSTALL step succeeded — the gate for `success` (for 'none' this is trivially true). */
+  frameworkInstalled: boolean;
   node: { present: boolean; version: string | null; satisfiesFloor: boolean };
   git: { present: boolean; version: string | null };
   bmad: { pinnedVersion: string; installed: boolean; installedVersion: string | null };
@@ -82,7 +82,7 @@ export function buildValidationSummary(facts: ValidationFacts): ValidationSummar
     facts.node.present &&
     facts.node.satisfiesFloor &&
     facts.git.present &&
-    facts.methodInstalled &&
+    facts.frameworkInstalled &&
     facts.scaffold.created;
 
   return {
@@ -92,7 +92,7 @@ export function buildValidationSummary(facts: ValidationFacts): ValidationSummar
     arch: facts.arch,
     osVersion: facts.osVersion,
     projectDir: facts.projectDir,
-    method: facts.method,
+    framework: facts.framework,
     node: facts.node,
     git: facts.git,
     bmad: facts.bmad,

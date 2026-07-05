@@ -5,8 +5,8 @@ import { scaffold as defaultScaffold, type ScaffoldOptions, type ScaffoldOutcome
 import { installAgentCli as defaultInstallAgentCli, eligibleAgentClis, type AgentCliOptions, type AgentCliResult } from './orchestrate/agent-cli';
 import { npxCliPath, npmCliPath } from './orchestrate/launch';
 import { exec as defaultExec } from './exec';
-import type { MethodContext, MethodInstallResult } from './method/provider';
-import { getMethod as resolveMethod, DEFAULT_METHOD } from './method/registry';
+import type { FrameworkContext, FrameworkInstallResult } from './framework/provider';
+import { getFramework as resolveFramework, DEFAULT_FRAMEWORK } from './framework/registry';
 import { runSelfCheck as defaultRunSelfCheck, type SelfCheckOptions } from './self-check';
 import { detectDependencies as defaultDetect, type DetectOptions, type DependencyState } from './provision/detect';
 import { provisionGitUnix as defaultProvisionGit, type ProvisionGitUnixOptions, type ProvisionGitResult } from './provision/git-unix';
@@ -22,10 +22,10 @@ export interface EngineDeps {
   provisionGit: (opts: ProvisionGitUnixOptions) => Promise<ProvisionGitResult>;
   scaffold: (opts: ScaffoldOptions) => Promise<ScaffoldOutcome>;
   /**
-   * Install the selected method (`config.method`, default 'bmad'). The default dispatches through
-   * the method registry to that provider's `install`; tests inject a fake to skip a real install.
+   * Install the selected framework (`config.framework`, default 'bmad'). The default dispatches through
+   * the framework registry to that provider's `install`; tests inject a fake to skip a real install.
    */
-  installMethod: (ctx: MethodContext) => Promise<MethodInstallResult>;
+  installFramework: (ctx: FrameworkContext) => Promise<FrameworkInstallResult>;
   installAgentCli: (opts: AgentCliOptions) => Promise<AgentCliResult>;
   runSelfCheck: (opts: SelfCheckOptions) => Promise<ValidationSummary>;
   writeFailureLog: (entry: FailureLogEntry) => Promise<string>;
@@ -37,7 +37,7 @@ const defaultDeps: EngineDeps = {
   detect: defaultDetect,
   provisionGit: defaultProvisionGit,
   scaffold: defaultScaffold,
-  installMethod: (ctx) => resolveMethod(ctx.config.method).install(ctx),
+  installFramework: (ctx) => resolveFramework(ctx.config.framework).install(ctx),
   installAgentCli: defaultInstallAgentCli,
   runSelfCheck: defaultRunSelfCheck,
   writeFailureLog: (entry) => defaultWriteFailureLog(entry),
@@ -73,7 +73,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
 
   // Outputs threaded between steps.
   private scaffoldCreated = false;
-  private methodInstalled = false;
+  private frameworkInstalled = false;
   private lastSummary: ValidationSummary | null = null;
 
   private readonly steps: Step[];
@@ -143,7 +143,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
           // Non-fatal: the step returns true unconditionally. The install RESULT is intentionally
           // not stored — the self-check re-derives CLI presence by probing (Story 6.2), so the
           // presence report is robust to a mid-run failure regardless of this step's outcome.
-          // Windows: same `.cmd`-shim problem as the method install — `npm` can't spawn by bare name
+          // Windows: same `.cmd`-shim problem as the framework install — `npm` can't spawn by bare name
           // (shell:false), so route through `node npm-cli.js …`. macOS/Linux keep the bare-`npm` default.
           await this.deps.installAgentCli({
             config: this.config,
@@ -171,7 +171,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
         },
       },
       {
-        id: StepId.InstallMethod,
+        id: StepId.InstallFramework,
         run: async () => {
           // The `runner` is how the provider invokes npx. Windows: `npx` is a `.cmd` shim that
           // spawn(shell:false) can't find by bare name → ENOENT, so run the provisioned node +
@@ -180,13 +180,13 @@ export class Engine implements EngineCommands<EngineRunResult> {
             this.deps.platform === 'win32'
               ? { command: process.execPath, prefixArgs: [npxCliPath(process.execPath)] }
               : { command: 'npx', prefixArgs: [] };
-          const result = await this.deps.installMethod({
+          const result = await this.deps.installFramework({
             config: this.config,
             emitter: this.emitter,
             exec: defaultExec,
             runner,
           });
-          this.methodInstalled = result.ok;
+          this.frameworkInstalled = result.ok;
           return result.ok;
         },
       },
@@ -195,8 +195,8 @@ export class Engine implements EngineCommands<EngineRunResult> {
         run: async () => {
           const summary = await this.deps.runSelfCheck({
             scaffoldCreated: this.scaffoldCreated,
-            bmadInstalled: this.methodInstalled,
-            method: this.config.method ?? DEFAULT_METHOD,
+            bmadInstalled: this.frameworkInstalled,
+            framework: this.config.framework ?? DEFAULT_FRAMEWORK,
             // Where the BMad manifest lives — self-check reads the ACTUAL installed version (FR26).
             projectDir: this.config.projectDir,
             // Thread the requested eligible CLI descriptors (SSOT accessor over config.installCli)

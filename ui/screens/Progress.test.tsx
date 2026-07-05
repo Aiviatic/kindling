@@ -44,7 +44,7 @@ describe('<Progress>', () => {
   it('renders one row per step with icon + WORD + the engine message', () => {
     const { emit } = renderProgress();
     emit(ev(StepId.ProvisionNode, Status.Done, 'Node ready'));
-    emit(ev(StepId.InstallMethod, Status.Working, 'Installing BMad…'));
+    emit(ev(StepId.InstallFramework, Status.Working, 'Installing BMad…'));
 
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(2);
@@ -57,11 +57,11 @@ describe('<Progress>', () => {
   it('groups the rows into system and project sections with headings', () => {
     const { emit } = renderProgress();
     emit(ev(StepId.ProvisionNode, Status.Done, 'Node ready')); // system
-    emit(ev(StepId.InstallMethod, Status.Working, 'Installing BMad…')); // project
+    emit(ev(StepId.InstallFramework, Status.Working, 'Installing BMad…')); // project
 
     expect(screen.getByRole('heading', { name: /Getting your computer ready/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Setting up your project/ })).toBeInTheDocument();
-    // Node (system) sits under the first heading, the method (project) under the second.
+    // Node (system) sits under the first heading, the framework (project) under the second.
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual(['Getting your computer ready', 'Setting up your project']);
   });
@@ -77,7 +77,7 @@ describe('<Progress>', () => {
 
   it('shows indeterminate activity (no aria-valuenow) while a known-slow step works (never frozen)', () => {
     const { emit } = renderProgress();
-    emit(ev(StepId.InstallMethod, Status.Working, 'Installing BMad — this can take a couple of minutes…'));
+    emit(ev(StepId.InstallFramework, Status.Working, 'Installing BMad — this can take a couple of minutes…'));
     const bar = screen.getByRole('progressbar');
     expect(bar).toHaveClass('progressbar--activity');
     expect(bar).not.toHaveAttribute('aria-valuenow'); // omitted → AT reads it as indeterminate
@@ -106,7 +106,7 @@ describe('<Progress>', () => {
     const { emit } = renderProgress();
     emit(ev(StepId.ProvisionNode, Status.Queued, 'Node needs setting up.'));
     expect(screen.getByText('Queued')).toBeInTheDocument();
-    emit(ev(StepId.InstallMethod, Status.Failed, 'A step did not finish. Press Retry.'));
+    emit(ev(StepId.InstallFramework, Status.Failed, 'A step did not finish. Press Retry.'));
     const failedRow = screen.getByText('Failed').closest('li');
     expect(failedRow).not.toBeNull();
     expect(within(failedRow as HTMLElement).getByText('A step did not finish. Press Retry.')).toBeInTheDocument();

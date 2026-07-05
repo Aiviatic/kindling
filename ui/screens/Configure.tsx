@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Config, Pins, InspectResult } from '../../engine/contract';
 import type { IdeCatalog, IdeOption } from '../config/ide-catalog';
 import { MODULE_OPTIONS, defaultConfig, DEFAULT_PROJECT_FOLDER } from '../config/defaults';
-import { METHOD_OPTIONS, DEFAULT_METHOD } from '../config/methods';
+import { FRAMEWORK_OPTIONS, DEFAULT_FRAMEWORK } from '../config/frameworks';
 import { AGENT_CLI_LABELS, isAgentCliId } from '../config/agent-cli';
 import { ENABLE_BMAD_UPDATE, BMAD_UPDATE_COPY } from '../config/bmad-update';
 import { Button } from '../components/Button';
@@ -66,10 +66,10 @@ export function Configure({
   const [projectName, setProjectName] = useState(base.projectName);
   const [ides, setIdes] = useState<string[]>(base.ides);
   const [modules, setModules] = useState<string[]>(base.modules);
-  // Project method (BMad by default). A quiet advanced choice — the default flow never opens it.
-  const [method, setMethod] = useState(DEFAULT_METHOD);
-  const [methodOpen, setMethodOpen] = useState(false);
-  const isBmad = method === 'bmad';
+  // Project framework (BMad by default). A quiet advanced choice — the default flow never opens it.
+  const [framework, setFramework] = useState(DEFAULT_FRAMEWORK);
+  const [frameworkOpen, setFrameworkOpen] = useState(false);
+  const isBmad = framework === 'bmad';
   const [showAllIdes, setShowAllIdes] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   // Agent-CLI opt-in is DEFAULT-ON for every eligible selected tool (AC-1). We track explicit
@@ -109,7 +109,7 @@ export function Configure({
   const folderTrim = folder.trim().replace(/[\\/]+$/, '');
   const name = projectName.trim();
   const dir = folderTrim && name ? `${folderTrim}/${name}` : '';
-  // Modules are a BMad concept — only require one when the method is BMad. "No framework" needs
+  // Modules are a BMad concept — only require one when the framework is BMad. "No framework" needs
   // no modules, so it can Start with just a tool + folder + name.
   const canStart =
     ides.length > 0 && (!isBmad || modules.length > 0) && folderTrim.length > 0 && name.length > 0;
@@ -177,12 +177,12 @@ export function Configure({
       projectDir: dir,
       projectName: name,
       ides,
-      // Modules are BMad-only; a non-bmad method sends none.
+      // Modules are BMad-only; a non-bmad framework sends none.
       modules: isBmad ? modules : [],
       installCli,
-      // Omit `method` when it's the default so the default Config stays byte-identical (like
+      // Omit `framework` when it's the default so the default Config stays byte-identical (like
       // installCli/bmadTarget). `bmadTarget` only makes sense for BMad.
-      ...(method !== DEFAULT_METHOD ? { method } : {}),
+      ...(framework !== DEFAULT_FRAMEWORK ? { framework } : {}),
       ...(isBmad && sendLatest ? { bmadTarget: 'latest' as const } : {}),
     });
   };
@@ -285,30 +285,30 @@ export function Configure({
         </fieldset>
       )}
 
-      {/* Setup method — a quiet advanced choice, collapsed by default so a normal user never has
+      {/* Setup framework — a quiet advanced choice, collapsed by default so a normal user never has
           to decide. BMad is the default; "No framework" scaffolds the project + tools only. */}
       <div className="disclosure">
         <Button
           variant="ghost"
-          aria-expanded={methodOpen}
-          aria-controls="method-panel"
-          onClick={() => setMethodOpen((v) => !v)}
+          aria-expanded={frameworkOpen}
+          aria-controls="framework-panel"
+          onClick={() => setFrameworkOpen((v) => !v)}
         >
-          {methodOpen ? '▾' : '▸'} Setup method: {METHOD_OPTIONS.find((m) => m.id === method)?.name}
+          {frameworkOpen ? '▾' : '▸'} Framework: {FRAMEWORK_OPTIONS.find((m) => m.id === framework)?.name}
         </Button>
-        {methodOpen && (
-          <div id="method-panel" className="disclosure-panel">
+        {frameworkOpen && (
+          <div id="framework-panel" className="disclosure-panel">
             <fieldset className="field">
               <legend className="field-label">How should we set up your project?</legend>
               <ul className="modules" role="list">
-                {METHOD_OPTIONS.map((m) => (
+                {FRAMEWORK_OPTIONS.map((m) => (
                   <li key={m.id}>
                     <label className="mod-row">
                       <input
                         type="radio"
-                        name="method"
-                        checked={method === m.id}
-                        onChange={() => setMethod(m.id)}
+                        name="framework"
+                        checked={framework === m.id}
+                        onChange={() => setFramework(m.id)}
                       />
                       <span className="mod-name">{m.name}</span>
                       {m.recommended && <span className="picker-tag">Recommended</span>}
@@ -322,7 +322,7 @@ export function Configure({
         )}
       </div>
 
-      {/* Module selection — BMad modules, so only shown for the BMad method. */}
+      {/* Module selection — BMad modules, so only shown for the BMad framework. */}
       {isBmad && (
         <fieldset className="field">
           <legend className="field-label">What to include</legend>

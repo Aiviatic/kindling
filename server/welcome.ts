@@ -87,18 +87,18 @@ function versionChip(summaryJson: string, pinnedFallback: string): { version: st
   }
 }
 
-// The chosen method id ('bmad'|'none'; undefined for a legacy summary ⇒ treated as BMad). 'none'
+// The chosen framework id ('bmad'|'none'; undefined for a legacy summary ⇒ treated as BMad). 'none'
 // hides all BMad-specific copy (the version row, the lede mention, the /bmad-help line).
-function methodOf(summaryJson: string): string | undefined {
+function frameworkOf(summaryJson: string): string | undefined {
   try {
-    const m = (JSON.parse(summaryJson) as { method?: unknown }).method;
+    const m = (JSON.parse(summaryJson) as { framework?: unknown }).framework;
     return typeof m === 'string' ? m : undefined;
   } catch {
     return undefined;
   }
 }
 function hasBmad(summaryJson: string): boolean {
-  return methodOf(summaryJson) !== 'none';
+  return frameworkOf(summaryJson) !== 'none';
 }
 
 // Build the "what's installed" table from the embedded summary (mirrors the React Welcome table).

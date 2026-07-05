@@ -73,8 +73,8 @@ describe('runServerMode', () => {
     expect(engine.start).toHaveBeenCalledWith(config);
     opts().commands.cancel();
     expect(engine.cancel).toHaveBeenCalled();
-    void opts().commands.retry(StepId.InstallMethod);
-    expect(engine.retry).toHaveBeenCalledWith(StepId.InstallMethod);
+    void opts().commands.retry(StepId.InstallFramework);
+    expect(engine.retry).toHaveBeenCalledWith(StepId.InstallFramework);
   });
 
   it('on render-ack writes the static welcome.html, closes the server, and exits (success only)', async () => {
