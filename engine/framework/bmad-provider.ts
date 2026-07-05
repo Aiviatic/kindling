@@ -1,5 +1,7 @@
 import { runBmadInstall } from '../orchestrate/bmad-install';
-import type { FrameworkProvider, FrameworkContext, FrameworkInstallResult } from './provider';
+import { readInstalledBmadVersion } from '../bmad-manifest';
+import { bmadVersionLabel } from '../validation-summary';
+import type { FrameworkProvider, FrameworkContext, FrameworkInstallResult, FrameworkSummary } from './provider';
 
 /**
  * The default framework: installs BMad via `npx bmad-method@<pin> install …`. This is a thin adapter
@@ -19,5 +21,13 @@ export const bmadProvider: FrameworkProvider = {
       npxPrefixArgs: ctx.runner.prefixArgs,
     });
     return { ok: result.ok, version: result.bmadVersion };
+  },
+  // Reads the ACTUAL installed version from the manifest (FR26) and applies the honest "updated to
+  // latest" vs "a stable, tested version" chip; falls back to the pinned version when the manifest
+  // is absent/unreadable.
+  async summaryFacts({ projectDir, pins }): Promise<FrameworkSummary | null> {
+    const installedVersion = await readInstalledBmadVersion(projectDir);
+    const chip = bmadVersionLabel({ bmad: { installedVersion } }, pins.bmad);
+    return { label: 'BMad Method', version: chip.version, note: chip.note };
   },
 };

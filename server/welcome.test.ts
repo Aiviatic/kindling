@@ -4,7 +4,8 @@ import { buildWelcomeHtml, writeWelcomeHtml } from './welcome';
 
 const data = {
   bmadVersion: '6.9.0',
-  summaryJson: '{"schemaVersion":3,"success":true,"cli":[]}',
+  summaryJson:
+    '{"schemaVersion":5,"success":true,"cli":[],"framework":"bmad","frameworkInfo":{"label":"BMad Method","version":"6.9.0","note":"a stable, tested version"}}',
 };
 
 // A summary carrying a present CLI (drives the FR25 login line) and an absent one (drives the AC-8
@@ -28,15 +29,15 @@ describe('buildWelcomeHtml', () => {
     expect(html).not.toContain('validation page');
   });
 
-  it("framework 'none' omits the BMad row + /bmad-help; a legacy summary keeps them", () => {
+  it("framework 'none' omits the framework row + getting-started; a bmad summary shows them", () => {
     const none = buildWelcomeHtml({
       bmadVersion: '6.9.0',
-      summaryJson: JSON.stringify({ schemaVersion: 4, success: true, cli: [], framework: 'none' }),
+      summaryJson: JSON.stringify({ schemaVersion: 5, success: true, cli: [], framework: 'none' }),
     });
     expect(none).not.toContain('BMad Method');
     expect(none).not.toContain('/bmad-help');
     expect(none).toContain('set up and ready for your tools');
-    // A legacy summary (no framework) still shows BMad — backward compatible.
+    // A bmad summary (carrying frameworkInfo) shows the BMad row + link.
     expect(buildWelcomeHtml(data)).toContain('BMad Method');
   });
 
@@ -93,23 +94,40 @@ describe('buildWelcomeHtml', () => {
     expect(html).not.toContain('didn’t finish installing');
   });
 
-  // AC-6: static-page version-chip honesty for the latest path (mirrors the React Welcome).
-  const summaryWithBmad = (installedVersion: string | null): string =>
-    JSON.stringify({ schemaVersion: 3, success: true, cli: [], bmad: { installedVersion } });
+  // The framework row is rendered generically from `frameworkInfo` (the honest "updated to latest"
+  // chip logic now lives in the provider + validation-summary tests). Here we verify the static page
+  // reflects whatever frameworkInfo carries, links the right framework, and degrades safely.
+  const summaryWithFramework = (frameworkInfo: unknown, framework = 'bmad'): string =>
+    JSON.stringify({ schemaVersion: 5, success: true, cli: [], framework, frameworkInfo });
 
-  it('AC-6: an installedVersion differing from the pin shows the honest version + "updated to latest"', () => {
-    const html = buildWelcomeHtml({ bmadVersion: '6.9.0', summaryJson: summaryWithBmad('6.10.0') });
+  it('renders the BMad row from frameworkInfo (version + note + link)', () => {
+    const html = buildWelcomeHtml({
+      bmadVersion: '6.9.0',
+      summaryJson: summaryWithFramework({ label: 'BMad Method', version: '6.10.0', note: 'updated to latest' }),
+    });
     expect(html).toContain('<strong>6.10.0</strong> &middot; updated to latest');
-    expect(html).not.toContain('a stable, tested version');
+    expect(html).toContain('BMad Method');
+    expect(html).toContain('docs.bmad-method.org');
   });
 
-  it('AC-6: an equal/null installedVersion keeps the pinned note', () => {
-    const equal = buildWelcomeHtml({ bmadVersion: '6.9.0', summaryJson: summaryWithBmad('6.9.0') });
-    expect(equal).toContain('<strong>6.9.0</strong> &middot; a stable, tested version');
-    const none = buildWelcomeHtml({ bmadVersion: '6.9.0', summaryJson: summaryWithBmad(null) });
-    expect(none).toContain('<strong>6.9.0</strong> &middot; a stable, tested version');
-    // Malformed summary also falls back to the pinned note.
-    expect(buildWelcomeHtml(data)).toContain('<strong>6.9.0</strong> &middot; a stable, tested version');
+  it('renders an OpenSpec row + OpenSpec link + /opsx getting-started (not BMad) when framework is openspec', () => {
+    const html = buildWelcomeHtml({
+      bmadVersion: '6.9.0',
+      summaryJson: summaryWithFramework({ label: 'OpenSpec', version: '1.5.0', note: 'a stable, tested version' }, 'openspec'),
+    });
+    expect(html).toContain('OpenSpec');
+    expect(html).toContain('<strong>1.5.0</strong>');
+    expect(html).toContain('github.com/Fission-AI/OpenSpec');
+    expect(html).toContain('/opsx:propose');
+    expect(html).not.toContain('/bmad-help');
+  });
+
+  it('a summary without frameworkInfo shows no framework row (graceful)', () => {
+    const html = buildWelcomeHtml({
+      bmadVersion: '6.9.0',
+      summaryJson: JSON.stringify({ schemaVersion: 5, success: true, cli: [], framework: 'bmad' }),
+    });
+    expect(html).not.toContain('BMad Method');
   });
 });
 

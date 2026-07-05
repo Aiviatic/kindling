@@ -9,7 +9,9 @@
 // safety: a v2 summary pasted into a v3 Validation Page reads as `malformed`.
 // v4 (framework providers): added `framework` (the chosen framework id, e.g. 'bmad'|'none'); `success` now
 // gates on the framework INSTALL step succeeding, not on BMad specifically (so "No framework" can pass).
-export const SCHEMA_VERSION = 4;
+// v5 (multiple frameworks): added `frameworkInfo` (label/version/note for the Welcome versions-table
+// row, or null for no framework) so the Welcome renders any framework, not just BMad.
+export const SCHEMA_VERSION = 5;
 
 /** Node runtime floor (BMad's hard requirement). */
 export const NODE_FLOOR_MAJOR = 20;
@@ -39,6 +41,8 @@ export interface ValidationSummary {
   projectDir: string;
   /** The chosen project framework id (`config.framework`, default 'bmad'; 'none' = no framework). */
   framework: string;
+  /** Framework facts for the Welcome versions-table row (label/version/note); `null` = no framework. */
+  frameworkInfo: { label: string; version: string; note: string } | null;
   node: { present: boolean; version: string | null; satisfiesFloor: boolean };
   git: { present: boolean; version: string | null };
   /**
@@ -64,6 +68,8 @@ export interface ValidationFacts {
   projectDir: string;
   /** Chosen framework id (drives `summary.framework`). */
   framework: string;
+  /** Versions-table facts for the chosen framework (from the provider's summaryFacts); null = none. */
+  frameworkInfo: { label: string; version: string; note: string } | null;
   /** The framework INSTALL step succeeded — the gate for `success` (for 'none' this is trivially true). */
   frameworkInstalled: boolean;
   node: { present: boolean; version: string | null; satisfiesFloor: boolean };
@@ -93,6 +99,7 @@ export function buildValidationSummary(facts: ValidationFacts): ValidationSummar
     osVersion: facts.osVersion,
     projectDir: facts.projectDir,
     framework: facts.framework,
+    frameworkInfo: facts.frameworkInfo,
     node: facts.node,
     git: facts.git,
     bmad: facts.bmad,

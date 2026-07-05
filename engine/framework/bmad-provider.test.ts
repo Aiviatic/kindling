@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { bmadProvider } from './bmad-provider';
 import { EngineEmitter } from '../emitter';
 import type { Config } from '../contract';
@@ -61,5 +64,24 @@ describe('bmadProvider', () => {
       runner: { command: 'npx', prefixArgs: [] },
     });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('bmadProvider.summaryFacts (honest version chip)', () => {
+  it('falls back to the pinned version + stable note when no manifest is on disk', async () => {
+    const facts = await bmadProvider.summaryFacts({ projectDir: '/nonexistent/kindling-none', pins: config.pins });
+    expect(facts).toEqual({ label: 'BMad Method', version: config.pins.bmad, note: 'a stable, tested version' });
+  });
+
+  it('reports the ACTUAL installed version + "updated to latest" when the manifest differs from the pin', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'kindling-bmad-'));
+    try {
+      await mkdir(join(dir, '_bmad', '_config'), { recursive: true });
+      await writeFile(join(dir, '_bmad', '_config', 'manifest.yaml'), 'installation:\n  version: 6.10.0\n');
+      const facts = await bmadProvider.summaryFacts({ projectDir: dir, pins: config.pins });
+      expect(facts).toEqual({ label: 'BMad Method', version: '6.10.0', note: 'updated to latest' });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

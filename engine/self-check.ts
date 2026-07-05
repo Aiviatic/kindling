@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { exec as defaultExec, type ExecResult } from './exec';
 import { probeVersion, probeCliVersion } from './probe';
 import { readInstalledBmadVersion as defaultReadInstalledBmadVersion } from './bmad-manifest';
+import { getFramework } from './framework/registry';
 import type { EngineEmitter } from './emitter';
 import { Phase, StepId, Status, ErrorCode, type Level } from './contract';
 import { pins } from './pins';
@@ -110,6 +111,9 @@ export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSu
   // BMad is "installed" only when the chosen framework IS bmad and its step succeeded. A non-bmad
   // framework (e.g. 'none') never installs BMad, so this is false regardless of a stray `_bmad` dir.
   const bmadInstalled = framework === 'bmad' && opts.bmadInstalled;
+  // Framework-agnostic versions-table facts (the provider owns its label/version/note); null for
+  // "No framework". Drives the Welcome row for BMad, OpenSpec, and any future framework.
+  const frameworkInfo = await getFramework(framework).summaryFacts({ projectDir: opts.projectDir, pins });
 
   const summary = buildValidationSummary({
     kindlingVersion: pins.kindling,
@@ -118,6 +122,7 @@ export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSu
     osVersion: platform.osVersion,
     projectDir: opts.projectDir,
     framework,
+    frameworkInfo,
     // The framework step succeeded — the actual gate for `success`.
     frameworkInstalled: opts.bmadInstalled,
     node: {

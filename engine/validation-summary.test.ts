@@ -17,6 +17,7 @@ function facts(overrides: Partial<ValidationFacts> = {}): ValidationFacts {
     osVersion: '24.0.0',
     projectDir: '/Users/ada/projects/my-app',
     framework: 'bmad',
+    frameworkInfo: { label: 'BMad Method', version: '6.1.2', note: 'a stable, tested version' },
     frameworkInstalled: true,
     node: { present: true, version: 'v24.16.0', satisfiesFloor: true },
     git: { present: true, version: 'git version 2.43.0' },
@@ -40,7 +41,8 @@ describe('buildValidationSummary', () => {
   it('produces a full schema object and success=true when all checks pass', () => {
     const s = buildValidationSummary(facts());
     expect(s.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(4); // v4 — the `framework` field + framework-gated success (framework providers)
+    expect(SCHEMA_VERSION).toBe(5); // v5 — added `frameworkInfo` (per-framework Welcome row)
+    expect(s.frameworkInfo).toEqual({ label: 'BMad Method', version: '6.1.2', note: 'a stable, tested version' });
     expect(s.success).toBe(true);
     expect(s.projectDir).toBe('/Users/ada/projects/my-app'); // threaded through to the summary
     // every schema field present
@@ -53,6 +55,7 @@ describe('buildValidationSummary', () => {
         'git',
         'kindlingVersion',
         'framework',
+        'frameworkInfo',
         'node',
         'os',
         'projectDir',

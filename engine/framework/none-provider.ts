@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Phase, StepId, Status } from '../contract';
-import type { FrameworkProvider, FrameworkContext, FrameworkInstallResult } from './provider';
+import type { FrameworkProvider, FrameworkContext, FrameworkInstallResult, FrameworkSummary } from './provider';
 
 /**
  * The "No framework" framework: installs nothing. The project is just the scaffolded folder + git and
@@ -21,5 +21,9 @@ export const noneProvider: FrameworkProvider = {
       timestamp: new Date().toISOString(),
     });
     return { ok: true };
+  },
+  // No framework ⇒ no versions-table row.
+  async summaryFacts(): Promise<FrameworkSummary | null> {
+    return null;
   },
 };

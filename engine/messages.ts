@@ -78,6 +78,7 @@ export const errorMessages: Record<ErrorCode, string> = {
   [ErrorCode.ExecFailed]: 'Something needs a quick fix: a step did not finish. Check the next step below, then press Retry.',
   [ErrorCode.NetworkLost]: 'We lost the connection. Reconnect to the internet, then press Retry.',
   [ErrorCode.BmadInstallFailed]: 'BMad didn’t finish installing. The details are below, press Retry.',
+  [ErrorCode.FrameworkInstallFailed]: 'The framework didn’t finish installing. The details are below, press Retry.',
   [ErrorCode.AgentCliInstallFailed]:
     'Your AI coding assistant didn’t finish installing. Your project is still ready. Press Retry, or install it yourself later.',
   [ErrorCode.ExecPolicyBlocked]: 'Windows blocked the script because it’s unsigned, that’s expected, safe, and reversible.',
@@ -116,6 +117,12 @@ export const recoveryGuidance: Record<ErrorCode, RecoveryGuidance> = {
   },
   [ErrorCode.BmadInstallFailed]: {
     title: 'BMad didn’t install.',
+    detail:
+      'The install step didn’t finish. This is usually temporary. Press Retry. The step details below show what happened.',
+    recovery: 'retry',
+  },
+  [ErrorCode.FrameworkInstallFailed]: {
+    title: 'The framework didn’t install.',
     detail:
       'The install step didn’t finish. This is usually temporary. Press Retry. The step details below show what happened.',
     recovery: 'retry',

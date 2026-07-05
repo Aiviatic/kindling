@@ -27,6 +27,7 @@ const greenSummary: ValidationSummary = {
   osVersion: '6.0.0',
   projectDir: '/tmp/proj',
   framework: 'bmad',
+  frameworkInfo: { label: 'BMad Method', version: '6.1.2', note: 'a stable, tested version' },
   node: { present: true, version: 'v24.16.0', satisfiesFloor: true },
   git: { present: true, version: 'git version 2.43.0' },
   bmad: { pinnedVersion: '6.1.2', installed: true, installedVersion: '6.1.2' },

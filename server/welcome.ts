@@ -3,23 +3,32 @@ import { join } from 'node:path';
 import {
   cliLoginGuidance,
   cliMissing,
-  bmadVersionLabel,
   type CliPresence,
   type ValidationSummary,
 } from '../engine/validation-summary';
 
 export interface WelcomeData {
-  /** Pinned BMad version — the fallback for the versions table's BMad row. */
+  /** Pinned BMad version (retained for callers; the versions row now reads `frameworkInfo`). */
   bmadVersion: string;
   /** The engine's Validation Summary JSON (already serialized) — the table reads versions from it. */
   summaryJson: string;
 }
 
-// "BMad" as a link to the BMAD-METHOD repo (mirrors the React <BmadLink>). `label` lets a caller
-// link a longer phrase like "BMad Method". Opens in a new tab.
-const BMAD_URL = 'https://docs.bmad-method.org/';
-function bmadLink(label = 'BMad'): string {
-  return `<a href="${BMAD_URL}" target="_blank" rel="noreferrer">${label}</a>`;
+// Per-framework link + getting-started, keyed by the provider id (mirrors the React Welcome's
+// FRAMEWORK_URL / frameworkGetStarted). The label/version/note come from the summary's frameworkInfo.
+const FRAMEWORK_URL: Record<string, string> = {
+  bmad: 'https://docs.bmad-method.org/',
+  openspec: 'https://github.com/Fission-AI/OpenSpec',
+};
+function frameworkLink(id: string | undefined, label: string): string {
+  const url = id ? FRAMEWORK_URL[id] : undefined;
+  return url ? `<a href="${url}" target="_blank" rel="noreferrer">${esc(label)}</a>` : esc(label);
+}
+function frameworkGetStartedHtml(id: string | undefined): string {
+  if (id === 'bmad') return ' You can also type <code>/bmad-help</code> to see what BMad can do.';
+  if (id === 'openspec')
+    return ' You can also type <code>/opsx:propose "your idea"</code> to plan your first change.';
+  return '';
 }
 
 // HTML-escape for safe interpolation into the static page (the summary is machine-generated,
@@ -75,20 +84,8 @@ function cliGuidanceHtml(summaryJson: string): string {
  * Validation Summary inline, so it keeps rendering on refresh after the ephemeral server has
  * exited (FR-12). Pure — returns the HTML string.
  */
-// Read the honest version chip (Story 7.2 / AC-6) from the embedded summary. A latest run reports
-// the ACTUAL installed version + "updated to latest"; the default pinned run (absent/null/equal
-// installedVersion) keeps `bmadVersion` + "a stable, tested version". Tolerant of malformed JSON.
-function versionChip(summaryJson: string, pinnedFallback: string): { version: string; note: string } {
-  try {
-    const parsed = JSON.parse(summaryJson) as { bmad?: { installedVersion?: string | null } };
-    return bmadVersionLabel(parsed, pinnedFallback);
-  } catch {
-    return bmadVersionLabel(null, pinnedFallback);
-  }
-}
-
-// The chosen framework id ('bmad'|'none'; undefined for a legacy summary ⇒ treated as BMad). 'none'
-// hides all BMad-specific copy (the version row, the lede mention, the /bmad-help line).
+// The chosen framework id ('bmad'|'openspec'|'none'; undefined for a legacy summary). Keys the
+// framework link + getting-started line. Tolerant of malformed JSON.
 function frameworkOf(summaryJson: string): string | undefined {
   try {
     const m = (JSON.parse(summaryJson) as { framework?: unknown }).framework;
@@ -97,12 +94,26 @@ function frameworkOf(summaryJson: string): string | undefined {
     return undefined;
   }
 }
-function hasBmad(summaryJson: string): boolean {
-  return frameworkOf(summaryJson) !== 'none';
+
+// The versions-table facts for the chosen framework (label/version/note), from the summary's
+// `frameworkInfo` (the provider's summaryFacts). `null` ⇒ no framework row ("No framework"), or a
+// malformed/legacy summary. The provider already applied the honest "updated to latest" chip.
+function frameworkInfoOf(summaryJson: string): { label: string; version: string; note: string } | null {
+  try {
+    const fi = (JSON.parse(summaryJson) as {
+      frameworkInfo?: { label?: unknown; version?: unknown; note?: unknown } | null;
+    }).frameworkInfo;
+    if (fi && typeof fi.label === 'string' && typeof fi.version === 'string' && typeof fi.note === 'string') {
+      return { label: fi.label, version: fi.version, note: fi.note };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // Build the "what's installed" table from the embedded summary (mirrors the React Welcome table).
-function versionsTableHtml(summaryJson: string, pinnedFallback: string): string {
+function versionsTableHtml(summaryJson: string): string {
   let node: { version: string | null } | undefined;
   let git: { version: string | null } | undefined;
   let cli: CliPresence[] = [];
@@ -119,16 +130,17 @@ function versionsTableHtml(summaryJson: string, pinnedFallback: string): string 
     cli = Array.isArray(p.cli) ? p.cli : [];
     projectDir = typeof p.projectDir === 'string' ? p.projectDir : undefined;
   } catch {
-    // Malformed summary: still show the BMad row (versionChip falls back to the pin).
+    // Malformed summary: the framework row simply omits (frameworkInfoOf returns null).
   }
-  const chip = versionChip(summaryJson, pinnedFallback);
+  const fw = frameworkInfoOf(summaryJson);
+  const fwId = frameworkOf(summaryJson);
   const rows: string[] = [];
   if (projectDir) rows.push(`<tr><th scope="row">Project folder</th><td>${esc(projectDir)}</td></tr>`);
   if (node) rows.push(`<tr><th scope="row">Node.js</th><td>${esc(node.version ?? 'Installed')}</td></tr>`);
   if (git) rows.push(`<tr><th scope="row">Git</th><td>${esc(git.version ?? 'Installed')}</td></tr>`);
-  if (hasBmad(summaryJson)) {
+  if (fw) {
     rows.push(
-      `<tr><th scope="row">${bmadLink('BMad Method')}</th><td><strong>${esc(chip.version)}</strong> &middot; ${esc(chip.note)}</td></tr>`,
+      `<tr><th scope="row">${frameworkLink(fwId, fw.label)}</th><td><strong>${esc(fw.version)}</strong> &middot; ${esc(fw.note)}</td></tr>`,
     );
   }
   for (const c of cli) {
@@ -147,14 +159,15 @@ function versionsTableHtml(summaryJson: string, pinnedFallback: string): string 
  * Pure — returns the HTML string.
  */
 export function buildWelcomeHtml(data: WelcomeData): string {
-  const versionsTable = versionsTableHtml(data.summaryJson, data.bmadVersion);
+  const versionsTable = versionsTableHtml(data.summaryJson);
   const cliGuidance = cliGuidanceHtml(data.summaryJson);
-  const bmad = hasBmad(data.summaryJson);
-  const ledeHtml = bmad
-    ? `Your project is set up with ${bmadLink()} and your tools. Open it in your editor to start building, and close this browser tab whenever you like.`
+  const fw = frameworkInfoOf(data.summaryJson);
+  const fwId = frameworkOf(data.summaryJson);
+  const ledeHtml = fw
+    ? `Your project is set up with ${frameworkLink(fwId, fw.label)} and your tools. Open it in your editor to start building, and close this browser tab whenever you like.`
     : `Your project is set up and ready for your tools. Open it in your editor to start building, and close this browser tab whenever you like.`;
-  const firstPromptHtml = bmad
-    ? `Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what ${bmadLink()} can do.`
+  const firstPromptHtml = fw
+    ? `Once you're in, just describe what you want to build.${frameworkGetStartedHtml(fwId)}`
     : `Once you're in, just describe what you want to build.`;
   return `<!doctype html>
 <html lang="en">

@@ -77,6 +77,9 @@ export const ErrorCode = {
   ExecFailed: 'exec.failed',
   NetworkLost: 'network.lost',
   BmadInstallFailed: 'install.bmad-failed',
+  // Generic framework install failure (e.g. OpenSpec) — the framework-agnostic sibling of
+  // BmadInstallFailed, which stays BMad-specific for its existing copy.
+  FrameworkInstallFailed: 'install.framework-failed',
   // Optional agent-CLI install (Story 6.1) — NON-fatal: keyed here so a failed CLI install
   // surfaces recovery guidance without invalidating the successful BMad install.
   AgentCliInstallFailed: 'install.agent-cli-failed',

@@ -18,6 +18,12 @@ export const FRAMEWORK_OPTIONS: FrameworkOption[] = [
     recommended: true,
   },
   {
+    id: 'openspec',
+    name: 'OpenSpec',
+    description: 'A spec-first workflow: plan each change in writing, then have your AI build it.',
+    recommended: false,
+  },
+  {
     id: 'none',
     name: 'No framework',
     description: 'Just a clean project and your tools. Bring your own workflow.',

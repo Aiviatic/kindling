@@ -15,7 +15,8 @@ class FakeEventSource implements EventSourceLike {
   }
 }
 
-const SUMMARY = '{"schemaVersion":3,"success":true,"cli":[],"bmad":{"pinnedVersion":"6.9.0"}}';
+const SUMMARY =
+  '{"schemaVersion":5,"success":true,"cli":[],"framework":"bmad","frameworkInfo":{"label":"BMad Method","version":"6.9.0","note":"a stable, tested version"}}';
 
 function successEvent(summaryJson = SUMMARY): KindlingEvent {
   return {
@@ -72,59 +73,64 @@ describe('<Welcome>', () => {
     expect(screen.getByText(/set up and ready for your tools/)).toBeInTheDocument();
   });
 
-  // AC-6: version-chip honesty for the latest path.
-  const summaryWithBmad = (installedVersion: string | null): string =>
-    JSON.stringify({
-      schemaVersion: 3,
+  // The framework row is rendered generically from `frameworkInfo`. The honest "updated to latest"
+  // chip logic now lives in the provider (bmad-provider.summaryFacts) + validation-summary tests,
+  // so here we only verify the row reflects whatever frameworkInfo carries, and degrades safely.
+  const summaryWithFramework = (frameworkInfo: unknown, framework = 'bmad'): string =>
+    JSON.stringify({ schemaVersion: 5, success: true, cli: [], framework, frameworkInfo });
+
+  it('renders the framework row from frameworkInfo (label, version, note)', () => {
+    renderWelcome(vi.fn(), summaryWithFramework({ label: 'BMad Method', version: '6.10.0', note: 'updated to latest' }));
+    const table = screen.getByTestId('versions');
+    expect(within(table).getByText('BMad Method')).toBeInTheDocument();
+    expect(within(table).getByText(/updated to latest/)).toHaveTextContent('6.10.0');
+  });
+
+  it('renders an OpenSpec row + OpenSpec getting-started, not BMad', () => {
+    // A CLI is present so the "start building" section (which carries the getting-started line) renders.
+    const s = JSON.stringify({
+      schemaVersion: 5,
       success: true,
-      cli: [],
-      bmad: { pinnedVersion: '6.9.0', installed: true, installedVersion },
+      cli: [presentClaude],
+      framework: 'openspec',
+      frameworkInfo: { label: 'OpenSpec', version: '1.5.0', note: 'a stable, tested version' },
     });
-
-  it('AC-6: an installedVersion differing from the pin shows the honest version + "updated to latest"', () => {
-    renderWelcome(vi.fn(), summaryWithBmad('6.10.0'));
-    const chip = screen.getByText(/updated to latest/);
-    expect(chip).toHaveTextContent('6.10.0');
-    expect(screen.queryByText(/a stable, tested version/)).toBeNull();
+    renderWelcome(vi.fn(), s);
+    const table = screen.getByTestId('versions');
+    expect(within(table).getByText('OpenSpec')).toBeInTheDocument();
+    expect(within(table).getByText('1.5.0')).toBeInTheDocument();
+    // OpenSpec's getting-started hint, not BMad's.
+    expect(screen.getByText('/opsx:propose "your idea"')).toBeInTheDocument();
+    expect(screen.queryByText('/bmad-help')).toBeNull();
   });
 
-  it('AC-6: an installedVersion EQUAL to the pin keeps the pinned chip unchanged', () => {
-    renderWelcome(vi.fn(), summaryWithBmad('6.9.0'));
-    expect(screen.getByText(/a stable, tested version/)).toBeInTheDocument();
-    expect(screen.queryByText(/updated to latest/)).toBeNull();
+  it('shows no framework row when frameworkInfo is absent (never blank/crash)', () => {
+    renderWelcome(vi.fn(), JSON.stringify({ schemaVersion: 5, success: true, cli: [], framework: 'bmad' }));
+    expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
+    expect(screen.queryByText('BMad Method')).toBeNull();
   });
 
-  it('AC-6: a null installedVersion falls back to the pinned chip (never blank/crash)', () => {
-    renderWelcome(vi.fn(), summaryWithBmad(null));
-    expect(screen.getByText(/a stable, tested version/)).toBeInTheDocument();
-    expect(screen.getByText('6.9.0')).toBeInTheDocument();
-  });
-
-  it('AC-6: a malformed summaryJson falls back to the pinned chip (never blank/crash)', () => {
+  it('a malformed summaryJson still renders (no framework row, never crash)', () => {
     renderWelcome(vi.fn(), 'not json at all');
-    expect(screen.getByText(/a stable, tested version/)).toBeInTheDocument();
-    expect(screen.getByText('6.9.0')).toBeInTheDocument();
-  });
-
-  it('AC-6: a summary with NO bmad key falls back to the pinned chip', () => {
-    renderWelcome(vi.fn(), JSON.stringify({ schemaVersion: 3, success: true, cli: [] }));
-    expect(screen.getByText(/a stable, tested version/)).toBeInTheDocument();
-    expect(screen.getByText('6.9.0')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
+    expect(screen.queryByText('BMad Method')).toBeNull();
   });
 
   it('shows a versions table with Node, Git, BMad, and the agent CLIs', () => {
     const withVersions = JSON.stringify({
-      schemaVersion: 3,
+      schemaVersion: 5,
       success: true,
+      framework: 'bmad',
+      frameworkInfo: { label: 'BMad Method', version: '6.9.0', note: 'a stable, tested version' },
       node: { present: true, version: '24.16.0', satisfiesFloor: true },
       git: { present: true, version: '2.43.0' },
-      bmad: { pinnedVersion: '6.9.0', installed: true, installedVersion: '6.9.0' },
       cli: [presentClaude],
     });
     renderWelcome(vi.fn(), withVersions);
     const table = screen.getByTestId('versions');
     expect(within(table).getByText('24.16.0')).toBeInTheDocument();
     expect(within(table).getByText('2.43.0')).toBeInTheDocument();
+    expect(within(table).getByText('BMad Method')).toBeInTheDocument();
     expect(within(table).getByText('6.9.0')).toBeInTheDocument();
     expect(within(table).getByText('Claude Code')).toBeInTheDocument();
   });

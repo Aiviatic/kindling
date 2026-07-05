@@ -1,6 +1,6 @@
 import type { EngineEmitter } from '../emitter';
 import type { ExecResult } from '../exec';
-import type { Config } from '../contract';
+import type { Config, Pins } from '../contract';
 
 // A pluggable project "framework" (BMad today; a bare "none" and alternatives later). The engine's
 // install step drives whichever provider the config selects, so BMad is no longer hardwired.
@@ -25,6 +25,16 @@ export interface FrameworkInstallResult {
   version?: string;
 }
 
+/** What the Welcome versions-table row shows for a framework. */
+export interface FrameworkSummary {
+  /** Display name, e.g. "BMad Method" / "OpenSpec". */
+  label: string;
+  /** Resolved version, e.g. "6.9.0" / "1.5.0". */
+  version: string;
+  /** Short qualifier, e.g. "a stable, tested version" / "updated to latest". */
+  note: string;
+}
+
 export interface FrameworkProvider {
   /** Stable id used by `config.framework` and the registry (e.g. 'bmad', 'none'). */
   id: string;
@@ -32,4 +42,10 @@ export interface FrameworkProvider {
   label: string;
   /** Run the install, emitting Working/Done/Failed on the install.framework step. */
   install(ctx: FrameworkContext): Promise<FrameworkInstallResult>;
+  /**
+   * Facts for the Welcome versions-table row, resolved after install. `null` ⇒ no framework row
+   * (the "No framework" case). Node-side (BMad reads its manifest); the result is serialized into
+   * the Validation Summary (`frameworkInfo`) and rendered by both Welcome renderers.
+   */
+  summaryFacts(args: { projectDir: string; pins: Pins }): Promise<FrameworkSummary | null>;
 }

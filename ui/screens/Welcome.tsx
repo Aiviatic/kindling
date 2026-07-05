@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Pins } from '../../engine/contract';
 import {
   cliMissing,
-  bmadVersionLabel,
   type CliPresence,
   type ValidationSummary,
 } from '../../engine/validation-summary';
@@ -11,7 +10,21 @@ import { Button } from '../components/Button';
 import { TextInput } from '../components/TextInput';
 import { submitOptIn } from '../lib/optin';
 import { AGENT_CLI_DESKTOP_URLS } from '../config/agent-cli';
-import { BmadLink } from '../components/BmadLink';
+
+// Per-framework Welcome bits, kept UI-side and keyed by the provider id so the rich link/command copy
+// lives where it renders. The label/version/note themselves come from the summary's `frameworkInfo`
+// (the provider's summaryFacts), so adding a framework is: a registry entry + a line or two here.
+const FRAMEWORK_URL: Record<string, string> = {
+  bmad: 'https://docs.bmad-method.org/',
+  openspec: 'https://github.com/Fission-AI/OpenSpec',
+};
+
+function frameworkGetStarted(id: string | undefined): ReactNode {
+  if (id === 'bmad') return (<>You can also type <code>/bmad-help</code> to see what BMad can do.</>);
+  if (id === 'openspec')
+    return (<>You can also type <code>/opsx:propose "your idea"</code> to plan your first change.</>);
+  return null;
+}
 
 // Parse the engine-produced summary JSON defensively — the CLI guidance is DERIVED from the
 // summary's actual `cli` presence (order-robust, not from the transient step row). Bad/absent
@@ -22,6 +35,7 @@ function parseSummary(
   cli: CliPresence[];
   bmad: ValidationSummary['bmad'];
   framework?: string;
+  frameworkInfo?: ValidationSummary['frameworkInfo'];
   node?: ValidationSummary['node'];
   git?: ValidationSummary['git'];
   projectDir?: string;
@@ -33,6 +47,7 @@ function parseSummary(
       cli?: CliPresence[];
       bmad?: ValidationSummary['bmad'];
       framework?: unknown;
+      frameworkInfo?: ValidationSummary['frameworkInfo'];
       node?: ValidationSummary['node'];
       git?: ValidationSummary['git'];
       projectDir?: unknown;
@@ -43,8 +58,11 @@ function parseSummary(
       // Read defensively for the versions table + the honest BMad chip; a legacy/absent shape simply
       // yields fewer rows (bmadVersionLabel reads only `bmad.installedVersion`).
       bmad: parsed.bmad as ValidationSummary['bmad'],
-      // The chosen framework id — 'none' hides all BMad-specific copy. Absent (legacy) ⇒ BMad shown.
+      // The chosen framework id — 'none' hides all framework-specific copy. Absent (legacy) ⇒ BMad shown.
       framework: typeof parsed.framework === 'string' ? parsed.framework : undefined,
+      // Generic per-framework row facts (label/version/note); null/absent ⇒ no framework row.
+      frameworkInfo:
+        parsed.frameworkInfo && typeof parsed.frameworkInfo === 'object' ? parsed.frameworkInfo : undefined,
       node: parsed.node,
       git: parsed.git,
       projectDir: typeof parsed.projectDir === 'string' ? parsed.projectDir : undefined,
@@ -90,7 +108,7 @@ export interface WelcomeProps {
 // Step 4 — Welcome (success). Celebratory but calm: confirms readiness, shows a table of what got
 // installed (versions from the self-check), the one-time CLI login step, and a PASSIVE workshop
 // strip — never autofocused, never required, never blocking.
-export function Welcome({ pins, onRendered }: WelcomeProps) {
+export function Welcome({ onRendered }: WelcomeProps) {
   const { state } = useInstaller();
 
   // Render-ack EXACTLY ONCE: let the host know the success screen is up so the ephemeral server
@@ -156,20 +174,25 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
   // map get a link; both current tools do, so this normally equals `requestedClis`.
   const desktopClis = requestedClis.filter((c) => c.id in AGENT_CLI_DESKTOP_URLS);
   const projectDir = parsed?.projectDir;
-  // Honest version chip (Story 7.2 / AC-6): reflect the ACTUAL installed version for a latest run;
-  // fall back to the pinned chip for the default (unchanged) run or an absent installedVersion.
-  const versionChip = bmadVersionLabel(parsed, pins.bmad);
-  // "No framework" hides all BMad-specific copy. Absent framework (legacy summary) ⇒ BMad, unchanged.
-  const hasBmad = parsed?.framework !== 'none';
+  // Framework versions-table facts (label/version/note) from the provider; null ⇒ no framework row
+  // ("No framework"). The provider already applied the honest "updated to latest" chip for BMad.
+  const fw = parsed?.frameworkInfo ?? null;
+  const fwUrl = parsed?.framework ? FRAMEWORK_URL[parsed.framework] : undefined;
+  const fwName: ReactNode = fw
+    ? fwUrl
+      ? (<a href={fwUrl} target="_blank" rel="noreferrer">{fw.label}</a>)
+      : fw.label
+    : null;
+  const fwGetStarted = frameworkGetStarted(parsed?.framework);
 
   return (
     <section className="screen screen--welcome" aria-labelledby="welcome-h">
       <p className="eyebrow">All set</p>
       <h1 id="welcome-h">You're ready 🔥</h1>
       <p className="lede">
-        {hasBmad ? (
+        {fw ? (
           <>
-            Your project is set up with <BmadLink /> and your tools.
+            Your project is set up with {fwName} and your tools.
           </>
         ) : (
           <>Your project is set up and ready for your tools.</>
@@ -198,13 +221,11 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               <td>{parsed.git.version ?? 'Installed'}</td>
             </tr>
           )}
-          {hasBmad && (
+          {fw && (
             <tr>
-              <th scope="row">
-                <BmadLink>BMad Method</BmadLink>
-              </th>
+              <th scope="row">{fwName}</th>
               <td>
-                <strong>{versionChip.version}</strong> · {versionChip.note}
+                <strong>{fw.version}</strong> · {fw.note}
               </td>
             </tr>
           )}
@@ -295,10 +316,10 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               door; without a framework, just describe what you want to build. */}
           <p className="start-note" data-testid="start-first-prompt">
             Once you're in, just describe what you want to build.
-            {hasBmad && (
+            {fwGetStarted && (
               <>
                 {' '}
-                You can also type <code>/bmad-help</code> to see what <BmadLink /> can do.
+                {fwGetStarted}
               </>
             )}
           </p>

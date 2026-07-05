@@ -52,6 +52,20 @@ describe('<Configure>', () => {
     expect(cfg.modules).toEqual([]);
   });
 
+  it('OpenSpec: selecting it hides the BMad-only Include group and Starts with framework:openspec + empty modules', () => {
+    const { onStart } = renderConfigure();
+    const select = screen.getByRole('combobox', { name: 'Framework' });
+    fireEvent.change(select, { target: { value: 'openspec' } });
+    // OpenSpec has no modules, so the Include group is gone and Start needs no module.
+    expect(screen.queryByText('Include')).toBeNull();
+    const startBtn = screen.getByRole('button', { name: 'Start' });
+    expect(startBtn).toBeEnabled();
+    startBtn.click();
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.framework).toBe('openspec');
+    expect(cfg.modules).toEqual([]);
+  });
+
   it('the default (BMad) Start omits the framework field (byte-identical default Config)', () => {
     const { onStart } = renderConfigure();
     screen.getByRole('button', { name: 'Start' }).click();

@@ -59,12 +59,19 @@ const progressFrames = [
 
 // `?framework=none` renders the No-framework Welcome (no BMad row/guidance) for a visual check.
 function welcomeSummary(framework: string): string {
+  const frameworkInfo =
+    framework === 'bmad'
+      ? { label: 'BMad Method', version: pins.bmad, note: 'a stable, tested version' }
+      : framework === 'openspec'
+        ? { label: 'OpenSpec', version: '1.5.0', note: 'a stable, tested version' }
+        : null;
   return JSON.stringify({
-    schemaVersion: 4,
+    schemaVersion: 5,
     success: true,
     projectDir: '~/My Projects/My Project',
     os: 'darwin',
     framework,
+    frameworkInfo,
     node: { present: true, version: '24.16.0', satisfiesFloor: true },
     git: { present: true, version: '2.45.2' },
     bmad:
