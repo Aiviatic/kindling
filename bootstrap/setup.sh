@@ -7,7 +7,7 @@
 set -euo pipefail
 
 KINDLING_NODE_VERSION="24.16.0"  # == pins.node
-KINDLING_VERSION="0.1.8"         # == pins.kindling
+KINDLING_VERSION="0.2.0"         # == pins.kindling
 NVM_VERSION="v0.40.3"            # == NVM_VERSION (engine/provision/node-unix.ts)
 NODE_FLOOR_MAJOR=20
 
