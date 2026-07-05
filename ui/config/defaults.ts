@@ -8,13 +8,18 @@ export interface ModuleOption {
   recommended: boolean;
 }
 
-// User-facing BMad module choices (a curated subset of the installed modules). bmm + cis are the
+// User-facing BMad module choices (a curated subset of BMad's module registry). bmm + cis are the
 // default/recommended set; the rest are opt-in. ids are exact `--modules` values. Order matters
-// (it's the display order): Creative Studio sits above BMad Builder.
+// (it's the display order). Automator is intentionally omitted: it's experimental and installs from
+// a moving `main` HEAD, which breaks the pinned/reproducible install. Each option here is verified
+// to install cleanly and non-interactively.
 export const MODULE_OPTIONS: ModuleOption[] = [
   { id: 'bmm', name: 'BMad Method', description: 'The core planning and dev workflow.', recommended: true },
   { id: 'cis', name: 'Creative Studio', description: 'Brainstorming and ideation tools.', recommended: true },
   { id: 'bmb', name: 'BMad Builder', description: 'Build your own agents and workflows.', recommended: false },
+  { id: 'tea', name: 'Test Architect', description: 'Test strategy, automation, and release quality gates.', recommended: false },
+  { id: 'gds', name: 'Game Dev Studio', description: 'Design and build games for Unity, Unreal, Godot, and Phaser.', recommended: false },
+  { id: 'wds', name: 'Whiteport Design Studio', description: 'A professional UX design process, from brief to design system.', recommended: false },
 ];
 
 export const DEFAULT_IDE = 'claude-code';
