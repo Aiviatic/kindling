@@ -36,6 +36,28 @@ describe('<Configure>', () => {
     expect(cfg.bmadTarget).toBeUndefined();
   });
 
+  it('No framework: hides the modules section and Starts with method:none + empty modules', () => {
+    const { onStart } = renderConfigure();
+    // The method selector is collapsed by default (default flow never sees it).
+    expect(screen.getByText('What to include')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Setup method:/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /No framework/ }));
+    // Modules are BMad-only → the section is gone, and Start no longer needs a module.
+    expect(screen.queryByText('What to include')).toBeNull();
+    const startBtn = screen.getByRole('button', { name: 'Start' });
+    expect(startBtn).toBeEnabled();
+    startBtn.click();
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.method).toBe('none');
+    expect(cfg.modules).toEqual([]);
+  });
+
+  it('the default (BMad) Start omits the method field (byte-identical default Config)', () => {
+    const { onStart } = renderConfigure();
+    screen.getByRole('button', { name: 'Start' }).click();
+    expect(onStart.mock.calls[0][0].method).toBeUndefined();
+  });
+
   it('only shows recommended IDEs until "Show all" is toggled', () => {
     renderConfigure();
     expect(screen.queryByText('Windsurf')).toBeNull(); // not recommended → hidden initially

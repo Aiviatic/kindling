@@ -26,6 +26,7 @@ const greenSummary: ValidationSummary = {
   arch: 'x64',
   osVersion: '6.0.0',
   projectDir: '/tmp/proj',
+  method: 'bmad',
   node: { present: true, version: 'v24.16.0', satisfiesFloor: true },
   git: { present: true, version: 'git version 2.43.0' },
   bmad: { pinnedVersion: '6.1.2', installed: true, installedVersion: '6.1.2' },

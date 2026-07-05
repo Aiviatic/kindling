@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Config, Pins, InspectResult } from '../../engine/contract';
 import type { IdeCatalog, IdeOption } from '../config/ide-catalog';
 import { MODULE_OPTIONS, defaultConfig, DEFAULT_PROJECT_FOLDER } from '../config/defaults';
+import { METHOD_OPTIONS, DEFAULT_METHOD } from '../config/methods';
 import { AGENT_CLI_LABELS, isAgentCliId } from '../config/agent-cli';
 import { ENABLE_BMAD_UPDATE, BMAD_UPDATE_COPY } from '../config/bmad-update';
 import { Button } from '../components/Button';
@@ -65,6 +66,10 @@ export function Configure({
   const [projectName, setProjectName] = useState(base.projectName);
   const [ides, setIdes] = useState<string[]>(base.ides);
   const [modules, setModules] = useState<string[]>(base.modules);
+  // Project method (BMad by default). A quiet advanced choice — the default flow never opens it.
+  const [method, setMethod] = useState(DEFAULT_METHOD);
+  const [methodOpen, setMethodOpen] = useState(false);
+  const isBmad = method === 'bmad';
   const [showAllIdes, setShowAllIdes] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   // Agent-CLI opt-in is DEFAULT-ON for every eligible selected tool (AC-1). We track explicit
@@ -104,7 +109,10 @@ export function Configure({
   const folderTrim = folder.trim().replace(/[\\/]+$/, '');
   const name = projectName.trim();
   const dir = folderTrim && name ? `${folderTrim}/${name}` : '';
-  const canStart = ides.length > 0 && modules.length > 0 && folderTrim.length > 0 && name.length > 0;
+  // Modules are a BMad concept — only require one when the method is BMad. "No framework" needs
+  // no modules, so it can Start with just a tool + folder + name.
+  const canStart =
+    ides.length > 0 && (!isBmad || modules.length > 0) && folderTrim.length > 0 && name.length > 0;
 
   // Deselecting an eligible tool from the picker forgets its opt-out, so a later re-select is
   // default-on again (and its opt-in row simply disappears while deselected — AC-3).
@@ -169,9 +177,13 @@ export function Configure({
       projectDir: dir,
       projectName: name,
       ides,
-      modules,
+      // Modules are BMad-only; a non-bmad method sends none.
+      modules: isBmad ? modules : [],
       installCli,
-      ...(sendLatest ? { bmadTarget: 'latest' as const } : {}),
+      // Omit `method` when it's the default so the default Config stays byte-identical (like
+      // installCli/bmadTarget). `bmadTarget` only makes sense for BMad.
+      ...(method !== DEFAULT_METHOD ? { method } : {}),
+      ...(isBmad && sendLatest ? { bmadTarget: 'latest' as const } : {}),
     });
   };
 
@@ -273,25 +285,64 @@ export function Configure({
         </fieldset>
       )}
 
-      {/* Module selection */}
-      <fieldset className="field">
-        <legend className="field-label">What to include</legend>
-        <ul className="modules" role="list">
-          {MODULE_OPTIONS.map((mod) => (
-            <li key={mod.id}>
-              <label className="mod-row">
-                <input
-                  type="checkbox"
-                  checked={modules.includes(mod.id)}
-                  onChange={() => setModules((cur) => toggle(cur, mod.id))}
-                />
-                <span className="mod-name">{mod.name}</span>
-                <span className="mod-desc">{mod.description}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </fieldset>
+      {/* Setup method — a quiet advanced choice, collapsed by default so a normal user never has
+          to decide. BMad is the default; "No framework" scaffolds the project + tools only. */}
+      <div className="disclosure">
+        <Button
+          variant="ghost"
+          aria-expanded={methodOpen}
+          aria-controls="method-panel"
+          onClick={() => setMethodOpen((v) => !v)}
+        >
+          {methodOpen ? '▾' : '▸'} Setup method: {METHOD_OPTIONS.find((m) => m.id === method)?.name}
+        </Button>
+        {methodOpen && (
+          <div id="method-panel" className="disclosure-panel">
+            <fieldset className="field">
+              <legend className="field-label">How should we set up your project?</legend>
+              <ul className="modules" role="list">
+                {METHOD_OPTIONS.map((m) => (
+                  <li key={m.id}>
+                    <label className="mod-row">
+                      <input
+                        type="radio"
+                        name="method"
+                        checked={method === m.id}
+                        onChange={() => setMethod(m.id)}
+                      />
+                      <span className="mod-name">{m.name}</span>
+                      {m.recommended && <span className="picker-tag">Recommended</span>}
+                      <span className="mod-desc">{m.description}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          </div>
+        )}
+      </div>
+
+      {/* Module selection — BMad modules, so only shown for the BMad method. */}
+      {isBmad && (
+        <fieldset className="field">
+          <legend className="field-label">What to include</legend>
+          <ul className="modules" role="list">
+            {MODULE_OPTIONS.map((mod) => (
+              <li key={mod.id}>
+                <label className="mod-row">
+                  <input
+                    type="checkbox"
+                    checked={modules.includes(mod.id)}
+                    onChange={() => setModules((cur) => toggle(cur, mod.id))}
+                  />
+                  <span className="mod-name">{mod.name}</span>
+                  <span className="mod-desc">{mod.description}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+      )}
 
       {/* Customize disclosure — now holds ONLY the gated "Update to latest BMad" affordance (Story
           7.2); the project folder + name are first-class fields above. Rendered only when the cohort

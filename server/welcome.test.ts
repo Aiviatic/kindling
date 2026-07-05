@@ -28,6 +28,18 @@ describe('buildWelcomeHtml', () => {
     expect(html).not.toContain('validation page');
   });
 
+  it("method 'none' omits the BMad row + /bmad-help; a legacy summary keeps them", () => {
+    const none = buildWelcomeHtml({
+      bmadVersion: '6.9.0',
+      summaryJson: JSON.stringify({ schemaVersion: 4, success: true, cli: [], method: 'none' }),
+    });
+    expect(none).not.toContain('BMad Method');
+    expect(none).not.toContain('/bmad-help');
+    expect(none).toContain('set up and ready for your tools');
+    // A legacy summary (no method) still shows BMad — backward compatible.
+    expect(buildWelcomeHtml(data)).toContain('BMad Method');
+  });
+
   it('shows Node / Git / CLI rows from the summary', () => {
     const html = buildWelcomeHtml({
       bmadVersion: '6.9.0',

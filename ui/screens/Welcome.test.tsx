@@ -60,6 +60,18 @@ describe('<Welcome>', () => {
     expect(screen.getByText(pins.bmad)).toBeInTheDocument();
   });
 
+  it("method 'none' hides all BMad-specific copy (no version row, no /bmad-help)", () => {
+    const noneSummary = JSON.stringify({ schemaVersion: 4, success: true, cli: [], method: 'none' });
+    renderWelcome(vi.fn(), noneSummary);
+    expect(screen.getByRole('heading', { name: /You're ready/ })).toBeInTheDocument();
+    // No BMad Method row, no pinned version, no /bmad-help hint.
+    expect(screen.queryByText('BMad Method')).toBeNull();
+    expect(screen.queryByText(pins.bmad)).toBeNull();
+    expect(screen.queryByText('/bmad-help')).toBeNull();
+    // The generic ready line still shows.
+    expect(screen.getByText(/set up and ready for your tools/)).toBeInTheDocument();
+  });
+
   // AC-6: version-chip honesty for the latest path.
   const summaryWithBmad = (installedVersion: string | null): string =>
     JSON.stringify({

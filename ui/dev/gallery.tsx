@@ -57,21 +57,30 @@ const progressFrames = [
   ev({ step: StepId.FinalizeSelfCheck, status: Status.Queued, humanMessage: 'Next: check everything over.' }),
 ];
 
-const welcomeSummary = JSON.stringify({
-  schemaVersion: 3,
-  success: true,
-  projectDir: '~/My Projects/My Project',
-  os: 'darwin',
-  node: { present: true, version: '24.16.0', satisfiesFloor: true },
-  git: { present: true, version: '2.45.2' },
-  bmad: { pinnedVersion: pins.bmad, installed: true, installedVersion: pins.bmad },
-  cli: [
-    { id: 'claude-code', name: 'Claude Code', bin: 'claude', pkg: '@anthropic-ai/claude-code', present: true },
-  ],
-});
-const welcomeFrames = [
-  ev({ step: StepId.FinalizeSelfCheck, status: Status.Done, humanMessage: 'All set.', summaryJson: welcomeSummary }),
-];
+// `?method=none` renders the No-framework Welcome (no BMad row/guidance) for a visual check.
+function welcomeSummary(method: string): string {
+  return JSON.stringify({
+    schemaVersion: 4,
+    success: true,
+    projectDir: '~/My Projects/My Project',
+    os: 'darwin',
+    method,
+    node: { present: true, version: '24.16.0', satisfiesFloor: true },
+    git: { present: true, version: '2.45.2' },
+    bmad:
+      method === 'bmad'
+        ? { pinnedVersion: pins.bmad, installed: true, installedVersion: pins.bmad }
+        : { pinnedVersion: pins.bmad, installed: false, installedVersion: null },
+    cli: [
+      { id: 'claude-code', name: 'Claude Code', bin: 'claude', pkg: '@anthropic-ai/claude-code', present: true },
+    ],
+  });
+}
+function welcomeFrames(method: string) {
+  return [
+    ev({ step: StepId.FinalizeSelfCheck, status: Status.Done, humanMessage: 'All set.', summaryJson: welcomeSummary(method) }),
+  ];
+}
 
 const noop = (): void => {};
 
@@ -85,12 +94,14 @@ function screenFor(name: string) {
           <Progress />
         </InstallerProvider>
       );
-    case 'welcome':
+    case 'welcome': {
+      const method = new URLSearchParams(location.search).get('method') ?? 'bmad';
       return (
-        <InstallerProvider EventSourceCtor={() => new ScriptedEventSource(welcomeFrames)}>
+        <InstallerProvider EventSourceCtor={() => new ScriptedEventSource(welcomeFrames(method))}>
           <Welcome pins={pins} />
         </InstallerProvider>
       );
+    }
     case 'intro':
     default:
       return <Intro onContinue={noop} onCancel={noop} />;

@@ -21,6 +21,7 @@ function parseSummary(
 ): {
   cli: CliPresence[];
   bmad: ValidationSummary['bmad'];
+  method?: string;
   node?: ValidationSummary['node'];
   git?: ValidationSummary['git'];
   projectDir?: string;
@@ -31,6 +32,7 @@ function parseSummary(
     const parsed = JSON.parse(json) as {
       cli?: CliPresence[];
       bmad?: ValidationSummary['bmad'];
+      method?: unknown;
       node?: ValidationSummary['node'];
       git?: ValidationSummary['git'];
       projectDir?: unknown;
@@ -41,6 +43,8 @@ function parseSummary(
       // Read defensively for the versions table + the honest BMad chip; a legacy/absent shape simply
       // yields fewer rows (bmadVersionLabel reads only `bmad.installedVersion`).
       bmad: parsed.bmad as ValidationSummary['bmad'],
+      // The chosen method id — 'none' hides all BMad-specific copy. Absent (legacy) ⇒ BMad shown.
+      method: typeof parsed.method === 'string' ? parsed.method : undefined,
       node: parsed.node,
       git: parsed.git,
       projectDir: typeof parsed.projectDir === 'string' ? parsed.projectDir : undefined,
@@ -155,14 +159,22 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
   // Honest version chip (Story 7.2 / AC-6): reflect the ACTUAL installed version for a latest run;
   // fall back to the pinned chip for the default (unchanged) run or an absent installedVersion.
   const versionChip = bmadVersionLabel(parsed, pins.bmad);
+  // "No framework" hides all BMad-specific copy. Absent method (legacy summary) ⇒ BMad, unchanged.
+  const hasBmad = parsed?.method !== 'none';
 
   return (
     <section className="screen screen--welcome" aria-labelledby="welcome-h">
       <p className="eyebrow">All set</p>
       <h1 id="welcome-h">You're ready 🔥</h1>
       <p className="lede">
-        Your project is set up with <BmadLink /> and your tools. Open it in your editor to start
-        building, and close this browser tab whenever you like.
+        {hasBmad ? (
+          <>
+            Your project is set up with <BmadLink /> and your tools.
+          </>
+        ) : (
+          <>Your project is set up and ready for your tools.</>
+        )}{' '}
+        Open it in your editor to start building, and close this browser tab whenever you like.
       </p>
 
       <table className="versions" data-testid="versions">
@@ -186,14 +198,16 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
               <td>{parsed.git.version ?? 'Installed'}</td>
             </tr>
           )}
-          <tr>
-            <th scope="row">
-              <BmadLink>BMad Method</BmadLink>
-            </th>
-            <td>
-              <strong>{versionChip.version}</strong> · {versionChip.note}
-            </td>
-          </tr>
+          {hasBmad && (
+            <tr>
+              <th scope="row">
+                <BmadLink>BMad Method</BmadLink>
+              </th>
+              <td>
+                <strong>{versionChip.version}</strong> · {versionChip.note}
+              </td>
+            </tr>
+          )}
           {(parsed?.cli ?? []).map((c) => (
             <tr key={c.id ?? c.bin}>
               <th scope="row">{c.name}</th>
@@ -277,11 +291,16 @@ export function Welcome({ pins, onRendered }: WelcomeProps) {
             )}
           </div>
 
-          {/* The first thing to actually DO once inside — BMad is already installed in the
-              project, so /bmad-help is the guided front door for a non-developer. */}
+          {/* The first thing to actually DO once inside. With BMad, /bmad-help is the guided front
+              door; without a framework, just describe what you want to build. */}
           <p className="start-note" data-testid="start-first-prompt">
-            Once you're in, just describe what you want to build. You can also type{' '}
-            <code>/bmad-help</code> to see what <BmadLink /> can do.
+            Once you're in, just describe what you want to build.
+            {hasBmad && (
+              <>
+                {' '}
+                You can also type <code>/bmad-help</code> to see what <BmadLink /> can do.
+              </>
+            )}
           </p>
         </div>
       )}

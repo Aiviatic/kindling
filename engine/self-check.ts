@@ -19,7 +19,12 @@ import type { AgentCliDescriptor } from './orchestrate/agent-cli';
 export interface SelfCheckOptions {
   /** Outcomes threaded from prior steps (Stories 1.4 / 1.5). */
   scaffoldCreated: boolean;
+  /** The method INSTALL step succeeded — gates `success`. For BMad this means BMad installed; for a
+   *  no-op method ('none') it's trivially true. (Named `bmadInstalled` for history; it's the method
+   *  step result.) */
   bmadInstalled: boolean;
+  /** Chosen method id (`config.method`, default 'bmad'). Only 'bmad' yields a BMad-installed summary. */
+  method?: string;
   /** Project directory — where the BMad manifest lives (`<projectDir>/_bmad/_config/manifest.yaml`). */
   projectDir: string;
   emitter: EngineEmitter;
@@ -98,9 +103,13 @@ export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSu
     cli.push({ id: c.id, name: c.name, bin: c.bin, pkg: c.pkg, present });
   }
 
+  const method = opts.method ?? 'bmad';
   // Read disk reality (FR26): the ACTUAL installed BMad version from the manifest. `null` on any
   // absent/unreadable/unparseable manifest — reported honestly, never gated into `success` here.
   const installedVersion = await readInstalledBmadVersion(opts.projectDir);
+  // BMad is "installed" only when the chosen method IS bmad and its step succeeded. A non-bmad
+  // method (e.g. 'none') never installs BMad, so this is false regardless of a stray `_bmad` dir.
+  const bmadInstalled = method === 'bmad' && opts.bmadInstalled;
 
   const summary = buildValidationSummary({
     kindlingVersion: pins.kindling,
@@ -108,13 +117,16 @@ export async function runSelfCheck(opts: SelfCheckOptions): Promise<ValidationSu
     arch: platform.arch,
     osVersion: platform.osVersion,
     projectDir: opts.projectDir,
+    method,
+    // The method step succeeded — the actual gate for `success`.
+    methodInstalled: opts.bmadInstalled,
     node: {
       present: nodeVersion !== null,
       version: nodeVersion,
       satisfiesFloor: nodeMajor !== null && nodeMajor >= NODE_FLOOR_MAJOR,
     },
     git: { present: gitVersion !== null, version: gitVersion },
-    bmad: { pinnedVersion: pins.bmad, installed: opts.bmadInstalled, installedVersion },
+    bmad: { pinnedVersion: pins.bmad, installed: bmadInstalled, installedVersion },
     scaffold: { created: opts.scaffoldCreated },
     cli,
     generatedAt,

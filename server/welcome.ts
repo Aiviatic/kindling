@@ -87,6 +87,20 @@ function versionChip(summaryJson: string, pinnedFallback: string): { version: st
   }
 }
 
+// The chosen method id ('bmad'|'none'; undefined for a legacy summary ⇒ treated as BMad). 'none'
+// hides all BMad-specific copy (the version row, the lede mention, the /bmad-help line).
+function methodOf(summaryJson: string): string | undefined {
+  try {
+    const m = (JSON.parse(summaryJson) as { method?: unknown }).method;
+    return typeof m === 'string' ? m : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function hasBmad(summaryJson: string): boolean {
+  return methodOf(summaryJson) !== 'none';
+}
+
 // Build the "what's installed" table from the embedded summary (mirrors the React Welcome table).
 function versionsTableHtml(summaryJson: string, pinnedFallback: string): string {
   let node: { version: string | null } | undefined;
@@ -112,9 +126,11 @@ function versionsTableHtml(summaryJson: string, pinnedFallback: string): string 
   if (projectDir) rows.push(`<tr><th scope="row">Project folder</th><td>${esc(projectDir)}</td></tr>`);
   if (node) rows.push(`<tr><th scope="row">Node.js</th><td>${esc(node.version ?? 'Installed')}</td></tr>`);
   if (git) rows.push(`<tr><th scope="row">Git</th><td>${esc(git.version ?? 'Installed')}</td></tr>`);
-  rows.push(
-    `<tr><th scope="row">${bmadLink('BMad Method')}</th><td><strong>${esc(chip.version)}</strong> &middot; ${esc(chip.note)}</td></tr>`,
-  );
+  if (hasBmad(summaryJson)) {
+    rows.push(
+      `<tr><th scope="row">${bmadLink('BMad Method')}</th><td><strong>${esc(chip.version)}</strong> &middot; ${esc(chip.note)}</td></tr>`,
+    );
+  }
   for (const c of cli) {
     rows.push(
       `<tr><th scope="row">${esc(c.name)}</th><td>${c.present ? '&#10003; Installed' : 'Not installed'}</td></tr>`,
@@ -133,6 +149,13 @@ function versionsTableHtml(summaryJson: string, pinnedFallback: string): string 
 export function buildWelcomeHtml(data: WelcomeData): string {
   const versionsTable = versionsTableHtml(data.summaryJson, data.bmadVersion);
   const cliGuidance = cliGuidanceHtml(data.summaryJson);
+  const bmad = hasBmad(data.summaryJson);
+  const ledeHtml = bmad
+    ? `Your project is set up with ${bmadLink()} and your tools. Open it in your editor to start building, and close this browser tab whenever you like.`
+    : `Your project is set up and ready for your tools. Open it in your editor to start building, and close this browser tab whenever you like.`;
+  const firstPromptHtml = bmad
+    ? `Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what ${bmadLink()} can do.`
+    : `Once you're in, just describe what you want to build.`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -164,8 +187,8 @@ export function buildWelcomeHtml(data: WelcomeData): string {
 <main>
   <p class="eyebrow">All set</p>
   <h1>You're ready &#128293;</h1>
-  <p class="lede">Your project is set up with ${bmadLink()} and your tools. Open it in your editor to start building, and close this browser tab whenever you like.</p>
-${versionsTable}${cliGuidance}  <p class="cli-guidance">Once you're in, just describe what you want to build. You can also type <code>/bmad-help</code> to see what ${bmadLink()} can do.</p>
+  <p class="lede">${ledeHtml}</p>
+${versionsTable}${cliGuidance}  <p class="cli-guidance">${firstPromptHtml}</p>
   <p class="cli-guidance">Want another project later? Run Kindling again. It remembers where your projects go.</p>
   <p><a href="https://aiviatic.com" target="_blank" rel="noreferrer">Join an Aiviatic workshop</a>, totally optional.</p>
 </main>

@@ -44,11 +44,31 @@ describe('runSelfCheck', () => {
     });
 
     expect(summary.success).toBe(true);
+    expect(summary.method).toBe('bmad'); // defaults to bmad
+    expect(summary.bmad.installed).toBe(true);
     expect(summary.node.satisfiesFloor).toBe(true);
     expect(summary.git.present).toBe(true);
     expect(summary.projectDir).toBe('/tmp/proj'); // opts.projectDir threaded into the summary
     expect(events.map((e) => e.status)).toEqual([Status.Working, Status.Done]);
     expect(events.every((e) => e.step === StepId.FinalizeSelfCheck)).toBe(true);
+  });
+
+  it("method 'none': BMad is not installed but the run still succeeds (No framework)", async () => {
+    const emitter = new EngineEmitter();
+    const summary = await runSelfCheck({
+      scaffoldCreated: true,
+      bmadInstalled: true, // the no-op method "install" succeeded
+      method: 'none',
+      projectDir: '/tmp/proj',
+      readInstalledBmadVersion: async () => null,
+      emitter,
+      exec: fakeExec({ node: 'v24.16.0', git: 'git version 2.43.0' }),
+      platform,
+    });
+
+    expect(summary.success).toBe(true); // node + git + scaffold + method-ok, no BMad required
+    expect(summary.method).toBe('none');
+    expect(summary.bmad.installed).toBe(false); // no BMad on disk for a no-framework project
   });
 
   it('emits failed and success=false when Node is below the floor (no false green)', async () => {

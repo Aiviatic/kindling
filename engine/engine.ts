@@ -6,7 +6,7 @@ import { installAgentCli as defaultInstallAgentCli, eligibleAgentClis, type Agen
 import { npxCliPath, npmCliPath } from './orchestrate/launch';
 import { exec as defaultExec } from './exec';
 import type { MethodContext, MethodInstallResult } from './method/provider';
-import { getMethod as resolveMethod } from './method/registry';
+import { getMethod as resolveMethod, DEFAULT_METHOD } from './method/registry';
 import { runSelfCheck as defaultRunSelfCheck, type SelfCheckOptions } from './self-check';
 import { detectDependencies as defaultDetect, type DetectOptions, type DependencyState } from './provision/detect';
 import { provisionGitUnix as defaultProvisionGit, type ProvisionGitUnixOptions, type ProvisionGitResult } from './provision/git-unix';
@@ -196,6 +196,7 @@ export class Engine implements EngineCommands<EngineRunResult> {
           const summary = await this.deps.runSelfCheck({
             scaffoldCreated: this.scaffoldCreated,
             bmadInstalled: this.methodInstalled,
+            method: this.config.method ?? DEFAULT_METHOD,
             // Where the BMad manifest lives — self-check reads the ACTUAL installed version (FR26).
             projectDir: this.config.projectDir,
             // Thread the requested eligible CLI descriptors (SSOT accessor over config.installCli)

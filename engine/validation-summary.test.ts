@@ -16,6 +16,8 @@ function facts(overrides: Partial<ValidationFacts> = {}): ValidationFacts {
     arch: 'arm64',
     osVersion: '24.0.0',
     projectDir: '/Users/ada/projects/my-app',
+    method: 'bmad',
+    methodInstalled: true,
     node: { present: true, version: 'v24.16.0', satisfiesFloor: true },
     git: { present: true, version: 'git version 2.43.0' },
     bmad: { pinnedVersion: '6.1.2', installed: true, installedVersion: '6.1.2' },
@@ -38,7 +40,7 @@ describe('buildValidationSummary', () => {
   it('produces a full schema object and success=true when all checks pass', () => {
     const s = buildValidationSummary(facts());
     expect(s.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(3); // v3 — the `bmad.installedVersion` field bump (Story 7.1 / FR26)
+    expect(SCHEMA_VERSION).toBe(4); // v4 — the `method` field + method-gated success (method providers)
     expect(s.success).toBe(true);
     expect(s.projectDir).toBe('/Users/ada/projects/my-app'); // threaded through to the summary
     // every schema field present
@@ -50,6 +52,7 @@ describe('buildValidationSummary', () => {
         'generatedAt',
         'git',
         'kindlingVersion',
+        'method',
         'node',
         'os',
         'projectDir',
@@ -105,7 +108,7 @@ describe('buildValidationSummary', () => {
     ['node below floor', facts({ node: { present: true, version: 'v18.0.0', satisfiesFloor: false } })],
     ['node absent', facts({ node: { present: false, version: null, satisfiesFloor: false } })],
     ['git absent', facts({ git: { present: false, version: null } })],
-    ['bmad not installed', facts({ bmad: { pinnedVersion: '6.1.2', installed: false, installedVersion: null } })],
+    ['the method install did not succeed', facts({ methodInstalled: false })],
     ['scaffold not created', facts({ scaffold: { created: false } })],
   ])('success=false when %s (no false green)', (_label, f) => {
     expect(buildValidationSummary(f).success).toBe(false);

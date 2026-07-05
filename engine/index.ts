@@ -17,6 +17,7 @@ export type { BmadInstallResult, BmadInstallOptions } from './orchestrate/bmad-i
 export type { MethodProvider, MethodContext, MethodInstallResult } from './method/provider';
 export { getMethod, DEFAULT_METHOD } from './method/registry';
 export { bmadProvider } from './method/bmad-provider';
+export { noneProvider } from './method/none-provider';
 export { installAgentCli, eligibleAgentClis, AGENT_CLI_TABLE } from './orchestrate/agent-cli';
 export type { AgentCliResult, AgentCliOptions, AgentCliDescriptor } from './orchestrate/agent-cli';
 export { runSelfCheck } from './self-check';
