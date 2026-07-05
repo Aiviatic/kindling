@@ -8,6 +8,7 @@ import {
   showsActivity,
   valueText,
   activeStep,
+  groupBySection,
 } from './progress';
 
 const step = (id: StepId, status: Status, message: string = id): StepView => ({
@@ -96,5 +97,26 @@ describe('valueText (accessible, word-bearing)', () => {
   it('says Complete when all terminal, Stopped on failure', () => {
     expect(valueText([step(StepId.FinalizeSelfCheck, Status.Done)])).toBe('Complete.');
     expect(valueText([step(StepId.InstallMethod, Status.Failed)])).toMatch(/Stopped/);
+  });
+});
+
+describe('groupBySection', () => {
+  it('splits steps into system (Node/Git/CLI) then project (scaffold/method/check)', () => {
+    const steps = [
+      step(StepId.ProvisionNode, Status.Done),
+      step(StepId.InstallAgentCli, Status.Done),
+      step(StepId.ScaffoldGitInit, Status.Done),
+      step(StepId.InstallMethod, Status.Working),
+    ];
+    const groups = groupBySection(steps);
+    expect(groups.map((g) => g.section)).toEqual(['system', 'project']);
+    expect(groups[0].steps.map((s) => s.id)).toEqual([StepId.ProvisionNode, StepId.InstallAgentCli]);
+    expect(groups[1].steps.map((s) => s.id)).toEqual([StepId.ScaffoldGitInit, StepId.InstallMethod]);
+  });
+
+  it('drops sections with no steps yet (so early on only system shows)', () => {
+    const groups = groupBySection([step(StepId.ProvisionNode, Status.Working)]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].section).toBe('system');
   });
 });

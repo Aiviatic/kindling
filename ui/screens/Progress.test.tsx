@@ -54,6 +54,18 @@ describe('<Progress>', () => {
     expect(within(rows[1]).getByText('Installing BMad…')).toBeInTheDocument();
   });
 
+  it('groups the rows into system and project sections with headings', () => {
+    const { emit } = renderProgress();
+    emit(ev(StepId.ProvisionNode, Status.Done, 'Node ready')); // system
+    emit(ev(StepId.InstallMethod, Status.Working, 'Installing BMad…')); // project
+
+    expect(screen.getByRole('heading', { name: /Getting your computer ready/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Setting up your project/ })).toBeInTheDocument();
+    // Node (system) sits under the first heading, the method (project) under the second.
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(['Getting your computer ready', 'Setting up your project']);
+  });
+
   it('drives the progress bar from real completion (aria-valuenow) on a non-slow working step', () => {
     const { emit } = renderProgress();
     emit(ev(StepId.ProvisionNode, Status.Done, 'Node ready'));

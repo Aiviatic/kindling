@@ -132,6 +132,33 @@ export class Engine implements EngineCommands<EngineRunResult> {
         },
       },
       {
+        // Agent-CLI install (Story 6.1) — a SYSTEM install (global `npm install -g`), so it runs in
+        // the system section alongside Node/Git, before the project is scaffolded. NON-fatal by
+        // design: the step returns `true` UNCONDITIONALLY, so an individual CLI-install failure never
+        // fails the run — it surfaces only as a Failed event (ErrorCode.AgentCliInstallFailed) and the
+        // run still reaches the project section + self-check. Retryable via
+        // engine.retry(StepId.InstallAgentCli); retry() skips the already-completed later steps.
+        id: StepId.InstallAgentCli,
+        run: async () => {
+          // Non-fatal: the step returns true unconditionally. The install RESULT is intentionally
+          // not stored — the self-check re-derives CLI presence by probing (Story 6.2), so the
+          // presence report is robust to a mid-run failure regardless of this step's outcome.
+          // Windows: same `.cmd`-shim problem as the method install — `npm` can't spawn by bare name
+          // (shell:false), so route through `node npm-cli.js …`. macOS/Linux keep the bare-`npm` default.
+          await this.deps.installAgentCli({
+            config: this.config,
+            emitter: this.emitter,
+            // Windows: the idempotent-skip probe must go through `cmd /c <bin> --version` so the
+            // installed `claude.cmd` shim is detected (Node won't spawn `.cmd` with shell:false).
+            isWindows: this.deps.platform === 'win32',
+            ...(this.deps.platform === 'win32'
+              ? { npmCommand: process.execPath, npmPrefixArgs: [npmCliPath(process.execPath)] }
+              : {}),
+          });
+          return true;
+        },
+      },
+      {
         id: StepId.ScaffoldGitInit,
         run: async () => {
           const outcome = await this.deps.scaffold({
@@ -161,34 +188,6 @@ export class Engine implements EngineCommands<EngineRunResult> {
           });
           this.methodInstalled = result.ok;
           return result.ok;
-        },
-      },
-      {
-        // Optional agent-CLI install (Story 6.1). NON-fatal by design: it awaits the step but
-        // returns `true` UNCONDITIONALLY, so an individual CLI-install failure never invalidates
-        // the successful BMad install — the run still reaches self-check / Welcome. The failure is
-        // surfaced only as a Failed event (ErrorCode.AgentCliInstallFailed) for the error surface /
-        // Story 6.2 UI. The row is retryable via engine.retry(StepId.InstallAgentCli) — but note a
-        // future "Retry install" affordance must ALSO re-run self-check to refresh the Welcome's
-        // CLI-presence guidance (retry() skips the already-completed self-check). See deferred-work.md.
-        id: StepId.InstallAgentCli,
-        run: async () => {
-          // Non-fatal: the step returns true unconditionally. The install RESULT is intentionally
-          // not stored — the self-check re-derives CLI presence by probing (Story 6.2), so the
-          // presence report is robust to a mid-run failure regardless of this step's outcome.
-          // Windows: same `.cmd`-shim problem as BMad — `npm` can't spawn by bare name (shell:false),
-          // so route through `node npm-cli.js …`. macOS/Linux keep the bare-`npm` default.
-          await this.deps.installAgentCli({
-            config: this.config,
-            emitter: this.emitter,
-            // Windows: the idempotent-skip probe must go through `cmd /c <bin> --version` so the
-            // installed `claude.cmd` shim is detected (Node won't spawn `.cmd` with shell:false).
-            isWindows: this.deps.platform === 'win32',
-            ...(this.deps.platform === 'win32'
-              ? { npmCommand: process.execPath, npmPrefixArgs: [npmCliPath(process.execPath)] }
-              : {}),
-          });
-          return true;
         },
       },
       {

@@ -34,6 +34,33 @@ export type StepId = (typeof StepId)[keyof typeof StepId];
  */
 export const NON_FATAL_STEPS: ReadonlySet<StepId> = new Set([StepId.InstallAgentCli]);
 
+/**
+ * Install sections, grouped by what the work touches — the two-part Progress grouping. `System` is
+ * machine-wide (Node, Git, and the global agent-CLI installs: install once, skip if present);
+ * `Project` is scoped to the folder (scaffold, the method install, and the final check). The step
+ * order matches this (all system steps run before all project steps). See
+ * docs/install-architecture-design.md.
+ */
+export const Section = {
+  System: 'system',
+  Project: 'project',
+} as const;
+export type Section = (typeof Section)[keyof typeof Section];
+
+/** Ordered sections for the UI grouping (system first, then project). */
+export const SECTION_ORDER: readonly Section[] = [Section.System, Section.Project];
+
+/** Which section each step belongs to (SSOT for the Progress grouping). */
+export const STEP_SECTION: Record<StepId, Section> = {
+  [StepId.ProvisionNode]: Section.System,
+  [StepId.ProvisionGit]: Section.System,
+  [StepId.ProvisionXcodeClt]: Section.System,
+  [StepId.InstallAgentCli]: Section.System,
+  [StepId.ScaffoldGitInit]: Section.Project,
+  [StepId.InstallMethod]: Section.Project,
+  [StepId.FinalizeSelfCheck]: Section.Project,
+};
+
 export const Status = {
   Queued: 'queued',
   Working: 'working',

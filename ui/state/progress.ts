@@ -1,5 +1,30 @@
-import { Status, StepId } from '../../engine/contract';
+import { Status, StepId, Section, SECTION_ORDER, STEP_SECTION } from '../../engine/contract';
 import type { StepView } from './model';
+
+/** User-facing heading for each install section on the Progress screen. */
+export const SECTION_LABELS: Record<Section, string> = {
+  [Section.System]: 'Getting your computer ready',
+  [Section.Project]: 'Setting up your project',
+};
+
+export interface StepGroup {
+  section: Section;
+  label: string;
+  steps: StepView[];
+}
+
+/**
+ * Group the observed steps into their install sections, in section order, dropping sections that
+ * have no steps yet (steps appear as they run). Order within a section is the engine's sequence,
+ * which already matches the section order — so grouping never visually reorders a running step.
+ */
+export function groupBySection(steps: StepView[]): StepGroup[] {
+  return SECTION_ORDER.map((section) => ({
+    section,
+    label: SECTION_LABELS[section],
+    steps: steps.filter((s) => STEP_SECTION[s.id] === section),
+  })).filter((g) => g.steps.length > 0);
+}
 
 export type Tone = 'wait' | 'busy' | 'success' | 'error';
 

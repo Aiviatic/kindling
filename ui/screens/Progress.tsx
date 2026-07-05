@@ -8,6 +8,7 @@ import {
   activeStep,
   valueText,
   isSlowStep,
+  groupBySection,
 } from '../state/progress';
 
 // Step 3 — honest, never-frozen Progress. One row per step (icon + WORD + the engine's own
@@ -61,31 +62,39 @@ export function Progress() {
         {state.lastMessage}
       </p>
 
-      <ul className="steps" role="list">
-        {steps.map((step) => {
-          const view = STATUS_VIEW[step.status] ?? STATUS_VIEW[Status.Queued]; // guard unknown
-          const working = step.status === Status.Working;
-          const slow = working && isSlowStep(step.id);
-          return (
-            <li
-              key={step.id}
-              className={`step-row${working ? ' step-row--working' : ''}`}
-              data-tone={view.tone}
-            >
-              <span className="step-icon" aria-hidden="true">
-                {view.icon}
-              </span>
-              <span className="step-word">{view.word}</span>
-              <span className="step-message">{step.message}</span>
-              {slow && (
-                <span className="step-activity" aria-hidden="true">
-                  •••
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {/* Two sections — the machine-wide "system" installs, then the "project" installs — so a
+          non-developer sees the scary/slow computer setup grouped apart from the project setup.
+          Sections appear as their steps start (event-driven), in section order. */}
+      {groupBySection(steps).map((group) => (
+        <div className="step-section" key={group.section}>
+          <h2 className="step-section-head">{group.label}</h2>
+          <ul className="steps" role="list">
+            {group.steps.map((step) => {
+              const view = STATUS_VIEW[step.status] ?? STATUS_VIEW[Status.Queued]; // guard unknown
+              const working = step.status === Status.Working;
+              const slow = working && isSlowStep(step.id);
+              return (
+                <li
+                  key={step.id}
+                  className={`step-row${working ? ' step-row--working' : ''}`}
+                  data-tone={view.tone}
+                >
+                  <span className="step-icon" aria-hidden="true">
+                    {view.icon}
+                  </span>
+                  <span className="step-word">{view.word}</span>
+                  <span className="step-message">{step.message}</span>
+                  {slow && (
+                    <span className="step-activity" aria-hidden="true">
+                      •••
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </section>
   );
 }
