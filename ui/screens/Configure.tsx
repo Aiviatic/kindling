@@ -416,7 +416,9 @@ export function Configure({
         )}
         {!canStart && (
           <span className="start-note" role="status">
-            Pick at least one tool and one module, and keep a project name and folder.
+            {isBmad
+              ? 'Pick at least one tool and one item under Include, and keep a project name and folder.'
+              : 'Pick at least one tool, and keep a project name and folder.'}
           </span>
         )}
       </div>

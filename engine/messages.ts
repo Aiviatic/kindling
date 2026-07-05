@@ -5,14 +5,14 @@ import { StepId, ErrorCode } from './contract';
 // keyed by a stable error code. Keys reference the StepId enum (never raw strings) so this
 // catalog stays in sync with the contract.
 export const stepMessages: Record<StepId, string> = {
-  [StepId.ProvisionNode]: 'Setting up Node - the engine your project runs on.',
-  [StepId.ProvisionGit]: 'Setting up Git - it keeps the history of your project safe.',
+  [StepId.ProvisionNode]: 'Setting up Node: the engine your project runs on.',
+  [StepId.ProvisionGit]: 'Setting up Git: it keeps the history of your project safe.',
   [StepId.ProvisionXcodeClt]:
     'macOS is installing some developer tools. A system dialog popped up: click Install. ' +
     'This is completely normal and usually takes about 5 minutes. You can grab a coffee.',
   [StepId.ScaffoldGitInit]: 'Creating your project folder and starting its history.',
   [StepId.InstallFramework]:
-    'Installing BMad - the toolkit that powers your project. This is a sizeable download, ' +
+    'Installing BMad, the framework that powers your project. This is a sizeable download, ' +
     'so it can take a couple of minutes. Nothing is stuck; hang tight.',
   [StepId.InstallAgentCli]:
     'Installing your AI coding assistant so it’s ready to run right after setup.',
@@ -27,7 +27,7 @@ export const agentCliMessages = {
   done: (name: string): string => `${name} is installed and ready to run.`,
   skipped: (name: string): string => `${name} is already installed, reusing it.`,
   failed: (name: string): string =>
-    `${name} didn’t finish installing - your project is still set up and ready. ` +
+    `${name} didn’t finish installing. Your project is still set up and ready. ` +
     `You can press Retry, or install it yourself later.`,
   manualInstall: (pkg: string): string => `To install it yourself later, run: npm install -g ${pkg}`,
 } as const;
@@ -45,13 +45,13 @@ export const scaffoldMessages = {
 // Provisioning detection copy (per tool, by detected state).
 export const provisionMessages = {
   nodePresent: 'Node is already installed, reusing it.',
-  nodeQueued: 'Node needs setting up - the engine your project runs on.',
+  nodeQueued: 'Node needs setting up: the engine your project runs on.',
   gitPresent: 'Git is already installed, reusing it.',
-  gitQueued: 'Git needs setting up - it keeps the history of your project.',
+  gitQueued: 'Git needs setting up: it keeps the history of your project.',
   gitInstalled: 'Git is set up.',
   xcodeWaiting:
-    'Still installing developer tools… the macOS dialog is doing its thing. This can take a few minutes, hang tight, nothing is stuck.',
-  xcodeDone: 'Developer tools are ready - Git is set up.',
+    'Still installing developer tools. The macOS dialog is doing its thing. This can take a few minutes, hang tight, nothing is stuck.',
+  xcodeDone: 'Developer tools are ready. Git is set up.',
   xcodeTimeout:
     'The developer-tools install is taking longer than expected. If the macOS dialog is still open, let it finish, then press Retry.',
   xcodeInstallFailed:
@@ -79,7 +79,7 @@ export const errorMessages: Record<ErrorCode, string> = {
   [ErrorCode.NetworkLost]: 'We lost the connection. Reconnect to the internet, then press Retry.',
   [ErrorCode.BmadInstallFailed]: 'BMad didn’t finish installing. The details are below, press Retry.',
   [ErrorCode.AgentCliInstallFailed]:
-    'Your AI coding assistant didn’t finish installing - your project is still ready. Press Retry, or install it yourself later.',
+    'Your AI coding assistant didn’t finish installing. Your project is still ready. Press Retry, or install it yourself later.',
   [ErrorCode.ExecPolicyBlocked]: 'Windows blocked the script because it’s unsigned, that’s expected, safe, and reversible.',
   [ErrorCode.SmartScreenBlocked]: 'Windows SmartScreen (or your antivirus) paused the script, that’s expected, safe, and reversible.',
   [ErrorCode.ProjectConflict]: 'That folder already has files in it that Kindling didn’t create.',
@@ -105,19 +105,19 @@ export interface RecoveryGuidance {
 export const recoveryGuidance: Record<ErrorCode, RecoveryGuidance> = {
   [ErrorCode.ExecFailed]: {
     title: 'Something needs a quick fix.',
-    detail: 'A step didn’t finish. This usually clears up on a second try, press Retry.',
+    detail: 'A step didn’t finish. This usually clears up on a second try. Press Retry.',
     recovery: 'retry',
   },
   [ErrorCode.NetworkLost]: {
     title: 'We lost the connection.',
     detail:
-      'A download was interrupted. Reconnect to the internet, then press Retry, Kindling resumes where it left off.',
+      'A download was interrupted. Reconnect to the internet, then press Retry. Kindling picks up where it left off.',
     recovery: 'retry',
   },
   [ErrorCode.BmadInstallFailed]: {
     title: 'BMad didn’t install.',
     detail:
-      'The install step didn’t finish. This is usually temporary, press Retry. The step details below show what happened.',
+      'The install step didn’t finish. This is usually temporary. Press Retry. The step details below show what happened.',
     recovery: 'retry',
   },
   [ErrorCode.AgentCliInstallFailed]: {
@@ -126,7 +126,7 @@ export const recoveryGuidance: Record<ErrorCode, RecoveryGuidance> = {
     // message (agentCliMessages.manualInstall) rather than in this static, error-code-keyed entry.
     title: 'Your AI assistant didn’t install.',
     detail:
-      'Your project is set up and ready either way, this step is optional. Press Retry to try again, or install it yourself later using the command shown in the step details below.',
+      'Your project is set up and ready either way. This step is optional. Press Retry to try again, or install it yourself later using the command shown in the step details below.',
     recovery: 'retry',
   },
   [ErrorCode.ExecPolicyBlocked]: {

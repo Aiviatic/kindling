@@ -24,7 +24,7 @@ Everything happens in your browser, in plain language. Here's the whole journey:
 
 ![Kindling's configure screen](docs/screenshots/configure.png)
 
-**3. Honest, never-frozen progress while it works.**
+**3. Kindling installs everything you selected, step by step.**
 
 ![Kindling's progress screen](docs/screenshots/progress.png)
 
@@ -46,12 +46,13 @@ Three layers, so the scary parts happen where they can be explained:
      `setup.ps1` over HTTPS).
 2. **A temporary localhost server** (`server/`) stands up on `127.0.0.1`, serves a
    friendly browser UI, provisions Git where the bootstrap hasn't already, scaffolds
-   the project, runs `npx bmad-method install`, and installs any agent CLIs you opt
-   into. It exits when the install completes.
-3. **A browser UI** (`ui/`) walks you through the few choices (project folder and
-   name, tools, and framework) and shows honest progress, grouped into system setup
-   and project setup, including the ~5-minute macOS developer-tools dialog, so it
-   never looks frozen.
+   the project, installs your chosen framework (BMad by default, via
+   `npx bmad-method install`), and installs any agent CLIs you opt into. It exits when
+   the install completes.
+3. **A browser UI** (`ui/`) walks you through the few choices: project folder and
+   name, tools, and framework. Progress is grouped into system setup and project
+   setup, and it keeps moving even through the ~5-minute macOS developer-tools
+   dialog, so it never looks frozen.
 
 The installer is published to npm as **`@aiviatic/kindling`**; the bootstrap's
 final step is `npx @aiviatic/kindling@<pinned-version>`.

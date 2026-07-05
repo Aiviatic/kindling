@@ -16,7 +16,7 @@ export const noneProvider: FrameworkProvider = {
       phase: Phase.Install,
       step: StepId.InstallFramework,
       status: Status.Done,
-      humanMessage: 'No framework selected — your project is a clean starting point.',
+      humanMessage: 'No framework selected. Your project is a clean starting point.',
       level: 'info',
       timestamp: new Date().toISOString(),
     });

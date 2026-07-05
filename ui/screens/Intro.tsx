@@ -23,7 +23,7 @@ export function Intro({ onContinue, onCancel }: IntroProps) {
       <ul className="intro-list">
         <li>Create a fresh project folder on your computer.</li>
         <li>
-          Set up <BmadLink><b>BMad</b></BmadLink> by default — the framework that guides your AI from
+          Set up <BmadLink><b>BMad</b></BmadLink> by default, the framework that guides your AI from
           an idea to a working app. You can pick a different one, or none, on the next screen.
         </li>
         <li>Connect the AI coding tools you choose on the next screen.</li>
