@@ -36,14 +36,14 @@ describe('<Configure>', () => {
     expect(cfg.bmadTarget).toBeUndefined();
   });
 
-  it('No framework: hides the modules section and Starts with framework:none + empty modules', () => {
+  it('No framework: the dropdown clears the options and Starts with framework:none + empty modules', () => {
     const { onStart } = renderConfigure();
-    // The framework selector is collapsed by default (default flow never sees it).
-    expect(screen.getByText('What to include')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Framework:/ }));
-    fireEvent.click(screen.getByRole('radio', { name: /No framework/ }));
-    // Modules are BMad-only → the section is gone, and Start no longer needs a module.
-    expect(screen.queryByText('What to include')).toBeNull();
+    // The framework is a first-class dropdown; BMad's modules ("Include") show beneath it.
+    const select = screen.getByRole('combobox', { name: 'Framework' });
+    expect(screen.getByText('Include')).toBeInTheDocument();
+    fireEvent.change(select, { target: { value: 'none' } });
+    // Modules are BMad-only → the options group is gone, and Start no longer needs a module.
+    expect(screen.queryByText('Include')).toBeNull();
     const startBtn = screen.getByRole('button', { name: 'Start' });
     expect(startBtn).toBeEnabled();
     startBtn.click();

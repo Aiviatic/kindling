@@ -66,9 +66,8 @@ export function Configure({
   const [projectName, setProjectName] = useState(base.projectName);
   const [ides, setIdes] = useState<string[]>(base.ides);
   const [modules, setModules] = useState<string[]>(base.modules);
-  // Project framework (BMad by default). A quiet advanced choice — the default flow never opens it.
+  // Project framework (BMad by default). A first-class dropdown field; its options render beneath it.
   const [framework, setFramework] = useState(DEFAULT_FRAMEWORK);
-  const [frameworkOpen, setFrameworkOpen] = useState(false);
   const isBmad = framework === 'bmad';
   const [showAllIdes, setShowAllIdes] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
@@ -285,64 +284,50 @@ export function Configure({
         </fieldset>
       )}
 
-      {/* Setup framework — a quiet advanced choice, collapsed by default so a normal user never has
-          to decide. BMad is the default; "No framework" scaffolds the project + tools only. */}
-      <div className="disclosure">
-        <Button
-          variant="ghost"
-          aria-expanded={frameworkOpen}
-          aria-controls="framework-panel"
-          onClick={() => setFrameworkOpen((v) => !v)}
+      {/* Framework — a first-class field grouped with its own options. Default BMad + pre-checked
+          modules, so one-click Start is untouched; "No framework" clears the options and the
+          dropdown's own description reassures (no separate empty-state needed). */}
+      <div className="field">
+        <label className="field-label" htmlFor="framework-select">
+          Framework
+        </label>
+        <select
+          id="framework-select"
+          className="field-input field-select"
+          value={framework}
+          onChange={(e) => setFramework(e.target.value)}
         >
-          {frameworkOpen ? '▾' : '▸'} Framework: {FRAMEWORK_OPTIONS.find((m) => m.id === framework)?.name}
-        </Button>
-        {frameworkOpen && (
-          <div id="framework-panel" className="disclosure-panel">
-            <fieldset className="field">
-              <legend className="field-label">How should we set up your project?</legend>
-              <ul className="modules" role="list">
-                {FRAMEWORK_OPTIONS.map((m) => (
-                  <li key={m.id}>
-                    <label className="mod-row">
-                      <input
-                        type="radio"
-                        name="framework"
-                        checked={framework === m.id}
-                        onChange={() => setFramework(m.id)}
-                      />
-                      <span className="mod-name">{m.name}</span>
-                      {m.recommended && <span className="picker-tag">Recommended</span>}
-                      <span className="mod-desc">{m.description}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </fieldset>
-          </div>
+          {FRAMEWORK_OPTIONS.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+              {m.recommended ? ' (recommended)' : ''}
+            </option>
+          ))}
+        </select>
+        <p className="field-note">{FRAMEWORK_OPTIONS.find((m) => m.id === framework)?.description}</p>
+
+        {/* The framework's options live right under it. BMad's modules; nothing for "No framework". */}
+        {isBmad && (
+          <fieldset className="field framework-options">
+            <legend className="field-label">Include</legend>
+            <ul className="modules" role="list">
+              {MODULE_OPTIONS.map((mod) => (
+                <li key={mod.id}>
+                  <label className="mod-row">
+                    <input
+                      type="checkbox"
+                      checked={modules.includes(mod.id)}
+                      onChange={() => setModules((cur) => toggle(cur, mod.id))}
+                    />
+                    <span className="mod-name">{mod.name}</span>
+                    <span className="mod-desc">{mod.description}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
         )}
       </div>
-
-      {/* Module selection — BMad modules, so only shown for the BMad framework. */}
-      {isBmad && (
-        <fieldset className="field">
-          <legend className="field-label">What to include</legend>
-          <ul className="modules" role="list">
-            {MODULE_OPTIONS.map((mod) => (
-              <li key={mod.id}>
-                <label className="mod-row">
-                  <input
-                    type="checkbox"
-                    checked={modules.includes(mod.id)}
-                    onChange={() => setModules((cur) => toggle(cur, mod.id))}
-                  />
-                  <span className="mod-name">{mod.name}</span>
-                  <span className="mod-desc">{mod.description}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        </fieldset>
-      )}
 
       {/* Customize disclosure — now holds ONLY the gated "Update to latest BMad" affordance (Story
           7.2); the project folder + name are first-class fields above. Rendered only when the cohort

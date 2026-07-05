@@ -3,9 +3,10 @@
 **Blank computer to building in about five minutes, no terminal knowledge required.**
 
 Kindling is a cross-platform installer that gets a non-technical person from a
-fresh computer (Mac, Windows, or Linux) to a working, [BMad](https://github.com/bmad-code-org/BMAD-METHOD)-scaffolded
-project set up for AI-driven app development. You run one step, make a few choices
-in your browser, and Kindling installs and wires everything up for you.
+fresh computer (Mac, Windows, or Linux) to a ready-to-build project for AI-driven
+app development, scaffolded with [BMad](https://github.com/bmad-code-org/BMAD-METHOD)
+by default (or no framework, if you'd rather bring your own). You run one step, make
+a few choices in your browser, and Kindling installs and wires everything up for you.
 
 It's open source on purpose: the very first thing Kindling does is run a script on
 your machine, so you should be able to read exactly what that script does. See
@@ -48,8 +49,9 @@ Three layers, so the scary parts happen where they can be explained:
    the project, runs `npx bmad-method install`, and installs any agent CLIs you opt
    into. It exits when the install completes.
 3. **A browser UI** (`ui/`) walks you through the few choices (project folder and
-   name, tools, what to include) and shows honest progress, including the ~5-minute
-   macOS developer-tools dialog, so it never looks frozen.
+   name, tools, and framework) and shows honest progress, grouped into system setup
+   and project setup, including the ~5-minute macOS developer-tools dialog, so it
+   never looks frozen.
 
 The installer is published to npm as **`@aiviatic/kindling`**; the bootstrap's
 final step is `npx @aiviatic/kindling@<pinned-version>`.

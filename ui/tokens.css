@@ -247,6 +247,24 @@ a.btn {
   border: 1px solid var(--color-border);
 }
 
+/* Framework dropdown — a native select, dark-themed, with a custom chevron so it reads on-brand. */
+.field-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--space-8);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23d6b9a3' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+}
+
+/* The framework's own options, nested under the dropdown with a soft left rule to group them. */
+.framework-options {
+  margin-top: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-border);
+}
+
 .field-input::placeholder {
   color: var(--color-text-muted);
 }
