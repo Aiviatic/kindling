@@ -1,10 +1,11 @@
 # Kindling
 
-**Blank computer to building in about five minutes, no terminal knowledge required.**
+**Set up your computer to build with AI in about five minutes, no terminal knowledge required.**
 
-Kindling is a cross-platform installer that gets a non-technical person from a
-fresh computer (Mac, Windows, or Linux) to a ready-to-build project for AI-driven
-app development, scaffolded with [BMad](https://github.com/bmad-code-org/BMAD-METHOD)
+Kindling is a cross-platform installer that gets a non-technical person building
+AI-driven apps in a few minutes, on whatever computer they already have (Mac,
+Windows, or Linux, and nothing needs to be installed first). It sets up a
+ready-to-build project, scaffolded with [BMad](https://github.com/bmad-code-org/BMAD-METHOD)
 by default (or no framework, if you'd rather bring your own). You run one step, make
 a few choices in your browser, and Kindling installs and wires everything up for you.
 
