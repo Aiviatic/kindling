@@ -1,5 +1,13 @@
 import type { ValidationSummary } from '../engine/validation-summary';
 
+/**
+ * Terminal message printed when the user quits from a pre-start screen (nothing was installed).
+ * The cancel counterpart to buildCompletionText, so the terminal confirms the cancel instead of
+ * exiting silently. Matches the browser Stopped screen's "canceled" wording.
+ */
+export const CANCELED_TEXT =
+  '\nSetup canceled. Nothing was installed.\n\nYou can close this terminal window whenever you like.';
+
 // Tidy a raw version string for the terminal: "v24.16.0" -> "24.16.0", "git version 2.43.0" -> "2.43.0".
 function cleanVersion(v: string): string {
   return v.replace(/^git version\s+/i, '').replace(/^v/, '').trim();

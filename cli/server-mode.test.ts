@@ -118,6 +118,8 @@ describe('runServerMode', () => {
     expect(server.close).toHaveBeenCalled();
     expect(deps.exit).toHaveBeenCalledWith(0);
     expect(deps.engineFactory).not.toHaveBeenCalled(); // nothing was installed
+    // The terminal confirms the cancel too (not a silent exit).
+    expect(deps.write).toHaveBeenCalledWith(expect.stringContaining('Setup canceled. Nothing was installed.'));
   });
 
   it('saves the UNexpanded projects folder on /start and wires GET /prefs to the read seam', async () => {

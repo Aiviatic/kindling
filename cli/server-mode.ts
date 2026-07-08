@@ -14,7 +14,7 @@ import {
   saveLastProjectFolder as defaultSaveLastProjectFolder,
 } from '../server/prefs';
 import { expandTilde } from '../engine/expand-tilde';
-import { buildCompletionText } from './completion-message';
+import { buildCompletionText, CANCELED_TEXT } from './completion-message';
 
 // Injectable seams so the lifecycle is unit-testable without a real install / browser / exit.
 export interface ServerModeDeps {
@@ -111,6 +111,13 @@ export async function runServerMode(
     onQuit: () => {
       if (acked) return;
       acked = true;
+      // Confirm the cancel in the terminal too (mirrors the browser Stopped screen), so quitting
+      // doesn't exit silently. Best-effort: a broken write must not stop the clean exit.
+      try {
+        write(CANCELED_TEXT);
+      } catch {
+        // ignore
+      }
       void server.close().then(() => exit(0), () => exit(0));
     },
   });
