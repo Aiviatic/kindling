@@ -93,6 +93,8 @@ describe('runServerMode', () => {
     });
     expect(server.close).toHaveBeenCalled();
     expect(deps.exit).toHaveBeenCalledWith(0);
+    // A final terminal confirmation is printed so a user who closed the browser tab still knows.
+    expect(deps.write).toHaveBeenCalledWith(expect.stringContaining('You can close this terminal window'));
   });
 
   it('expands a leading ~ in projectDir so writeWelcome gets a real path (regression: default dir crash)', async () => {

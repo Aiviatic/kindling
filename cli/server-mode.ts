@@ -14,6 +14,7 @@ import {
   saveLastProjectFolder as defaultSaveLastProjectFolder,
 } from '../server/prefs';
 import { expandTilde } from '../engine/expand-tilde';
+import { buildCompletionText } from './completion-message';
 
 // Injectable seams so the lifecycle is unit-testable without a real install / browser / exit.
 export interface ServerModeDeps {
@@ -130,6 +131,13 @@ export async function runServerMode(
       }
     }
     await server.close();
+    // Final terminal confirmation + recap, so a user who already closed the browser tab still knows
+    // the install finished and can close the window. Best-effort: never block the exit on it.
+    try {
+      write(buildCompletionText(done?.summaryJson ?? '', lastConfig?.projectDir ?? undefined));
+    } catch {
+      // ignore — a broken write must not stop the clean exit
+    }
     exit(0);
   };
 
