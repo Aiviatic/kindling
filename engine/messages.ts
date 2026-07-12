@@ -49,6 +49,8 @@ export const provisionMessages = {
   gitPresent: 'Git is already installed, reusing it.',
   gitQueued: 'Git needs setting up: it keeps the history of your project.',
   gitInstalled: 'Git is set up.',
+  gitSettingUpWindows:
+    'Setting up Git and Git Bash, which your AI coding tools need. This downloads about 55 MB, one time.',
   xcodeWaiting:
     'Still installing developer tools. The macOS dialog is doing its thing. This can take a few minutes, hang tight, nothing is stuck.',
   xcodeDone: 'Developer tools are ready. Git is set up.',

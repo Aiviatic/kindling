@@ -45,6 +45,7 @@ function deps(over: Partial<EngineDeps> = {}): Partial<EngineDeps> {
       git: { present: true, version: 'git version 2.43.0' },
     })),
     provisionGit: vi.fn(async () => ({ ok: true })),
+    provisionGitWindows: vi.fn(async () => ({ ok: true })),
     platform: 'linux',
     scaffold: vi.fn(async () => 'created' as const),
     installFramework: vi.fn(async () => ({ ok: true, version: '6.1.2' })),
@@ -114,18 +115,46 @@ describe('Engine orchestration', () => {
     expect(d.provisionGit).not.toHaveBeenCalled();
   });
 
-  it('Windows: reflects bootstrap-provisioned Git (Skipped if present, Failed if the spike did not run)', async () => {
+  it('Windows: provisions Git in the engine after Start (present → Skipped, absent → provisioned)', async () => {
+    // A real system Git → reuse it; neither provisioner runs.
     const present = deps({ platform: 'win32' }); // default detect → git present
     expect((await new Engine(config(), new EngineEmitter(), present).start()).ok).toBe(true);
-    expect(present.provisionGit).not.toHaveBeenCalled(); // engine doesn't run unix git on win
+    expect(present.provisionGit).not.toHaveBeenCalled(); // never the unix provisioner on win
+    expect(present.provisionGitWindows).not.toHaveBeenCalled(); // present → nothing to do
 
+    // Absent → the engine provisions portable Git itself (NOT the bootstrap).
     const missing = deps({
       platform: 'win32',
       detect: vi.fn(async () => ({ node: { present: true, version: 'v24.16.0', satisfiesFloor: true }, git: { present: false, version: null } })),
     });
-    const result = await new Engine(config(), new EngineEmitter(), missing).start();
+    expect((await new Engine(config(), new EngineEmitter(), missing).start()).ok).toBe(true);
+    expect(missing.provisionGitWindows).toHaveBeenCalledOnce();
+  });
+
+  it('Windows: a failed Git provision fails the run at the Git step', async () => {
+    const failed = deps({
+      platform: 'win32',
+      detect: vi.fn(async () => ({ node: { present: true, version: 'v24.16.0', satisfiesFloor: true }, git: { present: false, version: null } })),
+      provisionGitWindows: vi.fn(async () => ({ ok: false })),
+    });
+    const result = await new Engine(config(), new EngineEmitter(), failed).start();
     expect(result.ok).toBe(false);
     expect(result.failedStep).toBe(StepId.ProvisionGit);
+  });
+
+  it('Windows: puts the provisioned git cmd dir on process.env.PATH for the scaffold step', async () => {
+    const origPath = process.env.PATH;
+    try {
+      const d = deps({
+        platform: 'win32',
+        detect: vi.fn(async () => ({ node: { present: true, version: 'v24.16.0', satisfiesFloor: true }, git: { present: false, version: null } })),
+        provisionGitWindows: vi.fn(async () => ({ ok: true, gitCmdDir: 'C:\\k\\git\\cmd' })),
+      });
+      await new Engine(config(), new EngineEmitter(), d).start();
+      expect(process.env.PATH?.startsWith('C:\\k\\git\\cmd')).toBe(true);
+    } finally {
+      process.env.PATH = origPath;
+    }
   });
 
   it('Windows: threads the node + npx-cli.js runner to the framework install (no bare npx.cmd)', async () => {

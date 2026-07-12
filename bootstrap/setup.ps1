@@ -78,51 +78,19 @@ if (Test-NodeOk $NodeFloorMajor) {
   Say "Node is ready."
 }
 
-# --- Git (pinned, portable MinGit) -------------------------------------------
-# $GitCmdDir stays $null when a system Git is reused (already on PATH); the portable path sets it to
-# MinGit's cmd\ dir, prepended to PATH at launch so the engine can `git init` the new project.
-$GitCmdDir = $null
-$gitRoot = Join-Path $env:LOCALAPPDATA 'kindling\git'
-$portableGitCmd = Join-Path $gitRoot 'cmd'
-if (Test-Cmd 'git') {
-  Say "Git is already installed - reusing it."
-} elseif (Test-Path (Join-Path $portableGitCmd 'git.exe')) {
-  # Portable MinGit from a previous run is already extracted here - reuse it, don't re-download.
-  Say "Git is already installed - reusing it."
-  $GitCmdDir = $portableGitCmd
-} else {
-  Say "Setting up Git - it keeps the history of your project. This downloads about 35 MB, one time."
-  # Portable MinGit (the ZIP build made for bundling): download the pinned release, VERIFY its SHA-256
-  # before touching it, extract, and expose cmd\ on PATH. Mirrors the Node block. Pinned version +
-  # hash below MUST be bumped together (git-for-windows publishes the digest on each release asset).
-  $ProgressPreference = 'SilentlyContinue'
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  $gitVersion = '2.55.0.2'
-  $gitZip  = Join-Path $env:LOCALAPPDATA 'kindling\mingit.zip'
-  $gitUrl  = "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.2/MinGit-$gitVersion-64-bit.zip"
-  $gitSha  = 'e3ea2944cea4b3fabcd69c7c1669ef69b1b66c05ac7806d81224d0abad2dec31'
-  New-Item -ItemType Directory -Force -Path $gitRoot | Out-Null
-  try {
-    Invoke-WebRequest -Uri $gitUrl -OutFile $gitZip -UseBasicParsing
-    $actual = (Get-FileHash -Path $gitZip -Algorithm SHA256).Hash.ToLower()
-    if ($actual -ne $gitSha) {
-      throw "downloaded Git failed its integrity check (expected '$gitSha', got '$actual')"
-    }
-    Expand-Archive -Path $gitZip -DestinationPath $gitRoot -Force
-  } catch {
-    throw "Couldn't set up Git ($($_.Exception.Message)). Check your internet connection, then run this again - it's safe to re-run."
-  }
-  $GitCmdDir = $portableGitCmd
-  if (-not (Test-Path (Join-Path $GitCmdDir 'git.exe'))) { throw "Git was downloaded but git.exe wasn't found at $GitCmdDir." }
-  Say "Git is ready."
-}
+# --- Git is NOT provisioned here (by design) ---------------------------------
+# Git (full PortableGit, which includes the Git Bash that Claude Code needs) is a ~55 MB download, so
+# it's provisioned by the ENGINE, AFTER the user clicks Start in the browser — not here, before they
+# see the page. This mirrors macOS, where Git comes from the engine's Xcode step. See
+# engine/provision/git-windows.ts. The bootstrap installs only Node, the minimum needed to launch.
 
 # --- Persist the portable runtime on the USER PATH ---------------------------
 # So the tools actually WORK in a normal terminal afterward (not just during this run): node/npm/npx
-# live in the Node dir, git in MinGit's cmd\, and any globally-installed agent CLI (claude/codex)
-# gets its shim written INTO the Node dir (npm's global prefix) - so putting the Node dir on PATH
-# covers those too. Only the PORTABLE paths need this; a reused system Node/Git is already on PATH.
-# User-scope (no admin), idempotent, prepended so the pinned runtime wins. Future terminals pick it up.
+# live in the Node dir, and any globally-installed agent CLI (claude/codex) gets its shim written INTO
+# the Node dir (npm's global prefix) - so putting the Node dir on PATH covers those too. Only the
+# PORTABLE Node path needs this; a reused system Node is already on PATH. (Git persists its own PATH +
+# CLAUDE_CODE_GIT_BASH_PATH from the engine's Windows provisioner.) User-scope (no admin), idempotent,
+# prepended so the pinned runtime wins. Future terminals pick it up.
 function Add-UserPath([string]$dir) {
   if (-not $dir -or -not (Test-Path $dir)) { return }
   $cur = [Environment]::GetEnvironmentVariable('Path', 'User')
@@ -132,7 +100,6 @@ function Add-UserPath([string]$dir) {
   }
 }
 if ($NodeExe) { Add-UserPath (Split-Path $NodeExe) }
-if ($GitCmdDir) { Add-UserPath $GitCmdDir }
 
 # --- Launch Kindling (clean-runtime: absolute node when portable, else npx on PATH) -----------
 Say "Starting Kindling..."
@@ -144,9 +111,7 @@ Say "Starting Kindling..."
 $launchDir = Join-Path $env:LOCALAPPDATA 'kindling'
 New-Item -ItemType Directory -Force -Path $launchDir | Out-Null
 Set-Location -LiteralPath $launchDir
-# Portable Git on PATH (the engine spawns `git` by name to scaffold the project's history). Applies
-# to both launch branches; the provisioned Node dir is added inside the portable-Node branch below.
-if ($GitCmdDir) { $env:Path = "$GitCmdDir;$env:Path" }
+# (Git is provisioned by the engine after Start, which puts it on PATH for its own `git init`.)
 if ($null -eq $NodeExe) {
   & npx -y "@aiviatic/kindling@$KindlingVersion"
 } else {

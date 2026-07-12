@@ -10,6 +10,8 @@ import { getFramework as resolveFramework, DEFAULT_FRAMEWORK } from './framework
 import { runSelfCheck as defaultRunSelfCheck, type SelfCheckOptions } from './self-check';
 import { detectDependencies as defaultDetect, type DetectOptions, type DependencyState } from './provision/detect';
 import { provisionGitUnix as defaultProvisionGit, type ProvisionGitUnixOptions, type ProvisionGitResult } from './provision/git-unix';
+import { provisionGitWindows as defaultProvisionGitWindows, type ProvisionGitWindowsOptions, type ProvisionGitWindowsResult } from './provision/git-windows';
+import { delimiter as pathDelimiter } from 'node:path';
 import { provisionMessages } from './messages';
 import type { ValidationSummary } from './validation-summary';
 import { writeFailureLog as defaultWriteFailureLog, type FailureLogEntry } from './log';
@@ -20,6 +22,8 @@ import { expandTilde } from './expand-tilde';
 export interface EngineDeps {
   detect: (opts: DetectOptions) => Promise<DependencyState>;
   provisionGit: (opts: ProvisionGitUnixOptions) => Promise<ProvisionGitResult>;
+  /** Windows-only: provision portable Git (incl. Git Bash) AFTER Start; default spawns PowerShell. */
+  provisionGitWindows: (opts: ProvisionGitWindowsOptions) => Promise<ProvisionGitWindowsResult>;
   scaffold: (opts: ScaffoldOptions) => Promise<ScaffoldOutcome>;
   /**
    * Install the selected framework (`config.framework`, default 'bmad'). The default dispatches through
@@ -36,6 +40,7 @@ export interface EngineDeps {
 const defaultDeps: EngineDeps = {
   detect: defaultDetect,
   provisionGit: defaultProvisionGit,
+  provisionGitWindows: defaultProvisionGitWindows,
   scaffold: defaultScaffold,
   installFramework: (ctx) => resolveFramework(ctx.config.framework).install(ctx),
   installAgentCli: defaultInstallAgentCli,
@@ -109,9 +114,9 @@ export class Engine implements EngineCommands<EngineRunResult> {
       },
       {
         // Git/Xcode CLT runs IN the engine so the browser shows the never-frozen progress (the
-        // ~5-min macOS dialog). On Windows, Git is provisioned by the bootstrap (PortableGit) —
-        // probe + reflect it (Failed if the bootstrap didn't lay it down, rather than a cryptic
-        // scaffold crash later).
+        // ~5-min macOS dialog). On Windows, Git is provisioned HERE too — after Start, not in the
+        // bootstrap — so the ~55 MB PortableGit download (which includes the Git Bash that Claude
+        // Code needs) only happens once the user has consented, with progress shown in the browser.
         id: gitStepId,
         run: async () => {
           const state = await this.deps.detect({}); // probe only; no emitter (we drive the rows)
@@ -120,8 +125,14 @@ export class Engine implements EngineCommands<EngineRunResult> {
               this.emit(gitStepId, Status.Skipped, provisionMessages.gitPresent);
               return true;
             }
-            this.emit(gitStepId, Status.Failed, provisionMessages.gitInstallFailed, 'error', ErrorCode.ExecFailed);
-            return false;
+            const result = await this.deps.provisionGitWindows({ emitter: this.emitter });
+            // Put the freshly-provisioned git on THIS process's PATH so the later `git init` scaffold
+            // step resolves `git` by name (the PowerShell child persisted the USER PATH for future
+            // terminals, but that doesn't reach this already-running process).
+            if (result.ok && result.gitCmdDir) {
+              process.env.PATH = `${result.gitCmdDir}${pathDelimiter}${process.env.PATH ?? ''}`;
+            }
+            return result.ok;
           }
           const result = await this.deps.provisionGit({
             platform: this.deps.platform,
