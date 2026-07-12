@@ -1,6 +1,7 @@
 # Kindling bootstrap — Windows. FETCHED + run by kindling.cmd (self-fetching one-file entry):
 #   powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://kindling.aiviatic.com/setup.ps1 | iex"
-# Ensures the pinned Node + Git (portable), then launches Kindling.
+# Ensures the pinned Node (portable), then launches Kindling. Git is provisioned by the engine AFTER
+# the user clicks Start (full PortableGit, incl. Git Bash) — see engine/provision/git-windows.ts.
 #
 # SELF-CONTAINED for the `irm | iex` delivery path: there is NO file on disk (no $PSScriptRoot), so
 # the helpers are INLINED below rather than dot-sourced — mirroring setup.sh's inline helpers for
@@ -10,7 +11,7 @@
 $ErrorActionPreference = 'Stop'
 
 $KindlingNodeVersion = '24.16.0'  # == pins.node
-$KindlingVersion     = '0.2.3'    # == pins.kindling
+$KindlingVersion     = '0.2.4'    # == pins.kindling
 $NodeFloorMajor      = 20
 
 # --- Inline helpers (were bootstrap/lib/common.ps1; inlined for the file-less delivery) ----------
