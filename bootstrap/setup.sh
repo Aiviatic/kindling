@@ -24,26 +24,80 @@ node_ok() {
 
 say "🔥 Getting your computer ready. This usually takes about 5 minutes."
 
+# The shell profile our nvm loader should live in. zsh (the macOS default): ALWAYS .zshrc — every
+# interactive zsh reads it (login or not — VS Code terminals, tmux, iTerm profiles), and creating
+# it never shadows an existing .zprofile (zsh reads both). bash: prefer an EXISTING file so we
+# never shadow one (creating .bash_profile would stop bash reading .profile).
+shell_profile() {
+  case "${SHELL:-}" in
+    */zsh) printf '%s/.zshrc' "${ZDOTDIR:-$HOME}" ;;
+    */bash)
+      if [ -f "$HOME/.bashrc" ]; then printf '%s/.bashrc' "$HOME"
+      elif [ -f "$HOME/.bash_profile" ]; then printf '%s/.bash_profile' "$HOME"
+      elif [ -f "$HOME/.profile" ]; then printf '%s/.profile' "$HOME"
+      elif [ "$(uname -s)" = "Darwin" ]; then printf '%s/.bash_profile' "$HOME"
+      else printf '%s/.bashrc' "$HOME"; fi ;;
+    # SHELL unset/unusual: on macOS the login shell is zsh (Catalina+), so target .zshrc — zsh
+    # never reads ~/.profile, which would silently miss. Elsewhere ~/.profile is the POSIX home.
+    *)
+      if [ "$(uname -s)" = "Darwin" ]; then printf '%s/.zshrc' "${ZDOTDIR:-$HOME}"
+      else printf '%s/.profile' "$HOME"; fi ;;
+  esac
+}
+
 # --- Node (pinned, via nvm) ---------------------------------------------------
 if node_ok "$NODE_FLOOR_MAJOR"; then
   say "Node is already installed, reusing it."
 else
   say "Setting up Node, the engine your project runs on."
   export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  # nvm's installer only appends its loader to a shell profile that ALREADY exists — a brand-new
+  # Mac has none (no ~/.zshrc until something creates it), so Node/npm would vanish from every
+  # terminal opened after this one. Write the loader ourselves, creating the profile if needed.
+  # Runs on EVERY install pass (not just the first) so a previously broken setup is repaired by
+  # re-running the install line.
+  PROFILE_FILE="$(shell_profile)"
+  if ! touch "$PROFILE_FILE" 2>/dev/null; then
+    say "Couldn't write to $PROFILE_FILE. Check the file's permissions, then run the line again."
+    exit 1
+  fi
+  # Idempotency guard keys on OUR marker, not on any '/nvm.sh' mention — a stale/foreign nvm
+  # loader (old tutorial, Homebrew nvm pointing elsewhere) must NOT suppress ours. If one exists,
+  # ours is appended AFTER it, so ours wins for NVM_DIR/PATH; both loaders are [ -s ]-guarded, so
+  # a duplicate is harmless.
+  if ! grep -q 'Added by Kindling' "$PROFILE_FILE"; then
+    if ! {
+      printf '\n# Added by Kindling (kindling.aiviatic.com) — load nvm so Node/npm work in every terminal\n'
+      printf 'export NVM_DIR="%s"\n' "$NVM_DIR"
+      printf '[ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"  # This loads nvm\n'
+      printf '[ -s "$NVM_DIR/bash_completion" ] && \\. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion\n'
+    } >> "$PROFILE_FILE"; then
+      say "Couldn't write to $PROFILE_FILE. Check the file's permissions, then run the line again."
+      exit 1
+    fi
+  fi
   if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     if ! curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | bash; then
       say "Couldn't install nvm. Check your internet connection, then run the line again. It's safe to re-run."
       exit 1
     fi
   fi
-  set +u                 # nvm.sh references unset vars; `set -u` would abort while sourcing it
+  # Suspend BOTH -u and -e while sourcing: nvm.sh references unset vars, AND on a machine with no
+  # prior node its auto-`use` step can return non-zero — under `set -e` that kills this script
+  # SILENTLY, right before the install (verified against a blank $HOME). Restore both after.
+  set +eu
   # shellcheck source=/dev/null
   . "$NVM_DIR/nvm.sh"
-  set -u
+  set -eu
+  if ! have_cmd nvm; then
+    say "Couldn't load nvm after installing it. Run the line again — it's safe to re-run."
+    exit 1
+  fi
   if ! nvm install "$KINDLING_NODE_VERSION"; then
     say "Couldn't set up Node. Check your internet connection, then run the line again."
     exit 1
   fi
+  NODE_PROVISIONED_THIS_RUN=1
 fi
 
 # --- Git is provisioned by the ENGINE (in the browser), not here -------------
@@ -56,4 +110,11 @@ say "Starting Kindling…"
 if ! npx -y "@aiviatic/kindling@$KINDLING_VERSION"; then
   say "Kindling couldn't start. Check that you're connected to the internet, then run the line again. It's safe to re-run."
   exit 1
+fi
+
+# Node was installed DURING this session, so the terminal this was pasted into doesn't have it on
+# PATH yet (only NEW terminals read the profile we wrote). Say so — otherwise `npm`/`claude` look
+# "not installed" in the very window the user is sitting in.
+if [ "${NODE_PROVISIONED_THIS_RUN:-0}" = "1" ]; then
+  say "One last thing: open a NEW terminal window before using commands like npm or claude — this window was opened before Node was installed, so it can't see them yet."
 fi

@@ -37,9 +37,35 @@ describe('bootstrap/setup.sh (macOS/Linux entry — AC1)', () => {
     expect(setupSh).toMatch(/node_ok\(\)/);
     expect(setupSh).toMatch(/have_cmd\(\)/);
     expect(setupSh).not.toContain('lib/common.sh');
-    expect(setupSh).toMatch(/set \+u/); // suspends set -u around sourcing nvm.sh
+    // Suspends BOTH -e and -u around sourcing nvm.sh — under `set -e` alone, sourcing can kill
+    // the script silently on a machine with no prior node (verified against a blank $HOME).
+    expect(setupSh).toMatch(/set \+eu/);
+    // …and restores them. Anchored: an unanchored /set -eu/ would vacuously match the script's
+    // opening `set -euo pipefail` and never catch a deleted restore.
+    expect(setupSh).toMatch(/^\s*set -eu$/m);
+    expect(setupSh).toMatch(/have_cmd nvm/); // verifies nvm actually loaded after sourcing
     expect(setupSh).toMatch(/nvm install/); // provisions Node via nvm
     expect(setupSh).toMatch(/npx -y "@aiviatic\/kindling@/); // launches Kindling
+    // The terminal the install line was pasted into predates the PATH change — the user must be
+    // told to open a NEW terminal, or npm/claude look "not installed" in that very window.
+    expect(setupSh).toMatch(/NODE_PROVISIONED_THIS_RUN/);
+    expect(setupSh).toMatch(/NEW terminal/);
+  });
+
+  it('persists the nvm loader into the shell profile itself (fresh Macs have NO ~/.zshrc, and nvm\'s installer only appends to an existing file)', () => {
+    expect(setupSh).toMatch(/shell_profile\(\)/); // picks the profile for the user's login shell
+    expect(setupSh).toMatch(/\.zshrc/); // zsh (macOS default) is covered
+    expect(setupSh).toContain('touch "$PROFILE_FILE"'); // creates the profile when missing
+    // Appends the loader idempotently, keyed on OUR marker — a stale/foreign '/nvm.sh' mention
+    // in the profile must not suppress the append (it would leave a broken loader winning).
+    expect(setupSh).toMatch(/grep -q 'Added by Kindling' "\$PROFILE_FILE"/);
+    expect(setupSh).toContain('# Added by Kindling');
+    // The loader must run BEFORE the nvm-already-installed short-circuit, so a re-run after a
+    // profile-less first install still repairs the profile (nvm.sh exists → installer is skipped).
+    const profileIdx = setupSh.indexOf('touch "$PROFILE_FILE"');
+    const nvmSkipIdx = setupSh.indexOf('if [ ! -s "$NVM_DIR/nvm.sh" ]');
+    expect(profileIdx).toBeGreaterThan(0);
+    expect(profileIdx).toBeLessThan(nvmSkipIdx);
   });
 
   it('does NOT provision Git — that moved to the engine/browser (Option C)', () => {
