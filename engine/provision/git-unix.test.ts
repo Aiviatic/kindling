@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EngineEmitter } from '../emitter';
 import { StepId, Status } from '../contract';
-import { provisionGitUnix } from './git-unix';
+import { provisionGitUnix, NoPackageManagerError } from './git-unix';
+import { provisionMessages } from '../messages';
 
 function harness(platform: NodeJS.Platform) {
   const emitter = new EngineEmitter();
@@ -89,6 +90,83 @@ describe('provisionGitUnix — Linux (apt)', () => {
     await expect(
       provisionGitUnix({ ...h.base, installLinuxGit: vi.fn().mockRejectedValue(new Error('apt boom')) }),
     ).rejects.toThrow(/apt boom/);
-    expect(h.events(StepId.ProvisionGit).at(-1)?.status).toBe(Status.Failed);
+    const last = h.events(StepId.ProvisionGit).at(-1);
+    expect(last?.status).toBe(Status.Failed);
+    expect(last?.humanMessage).toBe(provisionMessages.gitInstallFailed);
+  });
+
+  it('surfaces NO-package-manager with its own copy, not the misleading permission message', async () => {
+    const h = harness('linux');
+    await expect(
+      provisionGitUnix({
+        ...h.base,
+        installLinuxGit: vi.fn().mockRejectedValue(new NoPackageManagerError(['apt-get', 'dnf'])),
+      }),
+    ).rejects.toThrow(/no supported package manager/);
+    const last = h.events(StepId.ProvisionGit).at(-1);
+    expect(last?.status).toBe(Status.Failed);
+    expect(last?.humanMessage).toBe(provisionMessages.gitInstallNoPackageManager);
+  });
+});
+
+describe('default installLinuxGit — multi-distro package-manager detection', () => {
+  // Drives the REAL default (no installLinuxGit injected) through an injected exec: presence is
+  // probed via `<bin> --version` (spawn ENOENT = absent), then `sudo -n <install args>` runs.
+  const ok = { code: 0, stdout: '', stderr: '' };
+  const enoent = () => Promise.reject(Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }));
+
+  function execFake(present: string[], sudoCalls: string[][]) {
+    return vi.fn((cmd: string, args: string[]) => {
+      if (cmd === 'sudo') {
+        sudoCalls.push(args);
+        return Promise.resolve(ok);
+      }
+      return present.includes(cmd) ? Promise.resolve(ok) : enoent();
+    });
+  }
+
+  it.each([
+    ['apt-get', ['apt-get', 'install', '-y', 'git']],
+    ['dnf', ['dnf', 'install', '-y', 'git']],
+    ['pacman', ['pacman', '-S', '--noconfirm', 'git']],
+    ['zypper', ['zypper', '--non-interactive', 'install', 'git']],
+  ])('installs via sudo -n when only %s is present', async (bin, installArgs) => {
+    const h = harness('linux');
+    const sudoCalls: string[][] = [];
+    const res = await provisionGitUnix({ ...h.base, exec: execFake([bin], sudoCalls) });
+    expect(res.ok).toBe(true);
+    expect(sudoCalls).toEqual([['-n', ...installArgs]]);
+  });
+
+  it('prefers apt-get when several managers are present', async () => {
+    const h = harness('linux');
+    const sudoCalls: string[][] = [];
+    await provisionGitUnix({ ...h.base, exec: execFake(['apt-get', 'dnf', 'pacman'], sudoCalls) });
+    expect(sudoCalls).toEqual([['-n', 'apt-get', 'install', '-y', 'git']]);
+  });
+
+  it('throws NoPackageManagerError (own Failed copy) when none is present', async () => {
+    const h = harness('linux');
+    const sudoCalls: string[][] = [];
+    await expect(
+      provisionGitUnix({ ...h.base, exec: execFake([], sudoCalls) }),
+    ).rejects.toBeInstanceOf(NoPackageManagerError);
+    expect(sudoCalls).toEqual([]); // never got to sudo
+    expect(h.events(StepId.ProvisionGit).at(-1)?.humanMessage).toBe(
+      provisionMessages.gitInstallNoPackageManager,
+    );
+  });
+
+  it('rethrows with the manager name when the sudo install itself fails', async () => {
+    const h = harness('linux');
+    const exec = vi.fn((cmd: string) =>
+      cmd === 'sudo'
+        ? Promise.resolve({ code: 1, stdout: '', stderr: 'a password is required' })
+        : Promise.resolve(ok),
+    );
+    await expect(provisionGitUnix({ ...h.base, exec })).rejects.toThrow(
+      /apt-get install git failed \(code 1\): a password is required/,
+    );
+    expect(h.events(StepId.ProvisionGit).at(-1)?.humanMessage).toBe(provisionMessages.gitInstallFailed);
   });
 });

@@ -28,6 +28,24 @@ export interface ProvisionGitResult {
   ok: boolean;
 }
 
+/** Thrown when no supported Linux package manager exists — surfaced with its own copy (the
+ *  generic "may need permission" message would misdiagnose a Fedora/Arch box as a sudo problem). */
+export class NoPackageManagerError extends Error {
+  constructor(tried: string[]) {
+    super(`no supported package manager found (tried ${tried.join(', ')})`);
+    this.name = 'NoPackageManagerError';
+  }
+}
+
+// Non-interactive `git` install per package manager. First present binary wins — detection by
+// probing `<bin> --version` (exec rejects on ENOENT), never by guessing the distro name.
+const LINUX_PACKAGE_MANAGERS: ReadonlyArray<{ bin: string; installArgs: string[] }> = [
+  { bin: 'apt-get', installArgs: ['apt-get', 'install', '-y', 'git'] }, // Debian/Ubuntu (primary)
+  { bin: 'dnf', installArgs: ['dnf', 'install', '-y', 'git'] }, // Fedora/RHEL
+  { bin: 'pacman', installArgs: ['pacman', '-S', '--noconfirm', 'git'] }, // Arch
+  { bin: 'zypper', installArgs: ['zypper', '--non-interactive', 'install', 'git'] }, // openSUSE
+];
+
 function makeDefaults(exec: (cmd: string, args: string[]) => Promise<ExecResult>) {
   return {
     triggerXcodeInstall: async (): Promise<void> => {
@@ -37,11 +55,26 @@ function makeDefaults(exec: (cmd: string, args: string[]) => Promise<ExecResult>
     },
     checkXcode: async (): Promise<boolean> => (await exec('xcode-select', ['-p'])).code === 0,
     installLinuxGit: async (): Promise<void> => {
-      // apt primary (Debian/Ubuntu — the best-effort Linux target). `sudo -n` is non-interactive:
-      // with no cached creds it fails fast (clear error) instead of hanging on a password prompt
-      // we can't answer (exec's stdin is /dev/null). Real run rehearsal-bound.
-      const r = await exec('sudo', ['-n', 'apt-get', 'install', '-y', 'git']);
-      if (r.code !== 0) throw new Error(`apt-get install git failed (code ${r.code}): ${r.stderr.trim()}`);
+      // Find the distro's package manager, then install. `sudo -n` is non-interactive: with no
+      // cached creds it fails fast (clear error) instead of hanging on a password prompt we
+      // can't answer (exec's stdin is /dev/null).
+      let manager: (typeof LINUX_PACKAGE_MANAGERS)[number] | null = null;
+      for (const m of LINUX_PACKAGE_MANAGERS) {
+        // Any exit code means the binary exists; only a spawn error (ENOENT) means it doesn't.
+        const present = await exec(m.bin, ['--version']).then(
+          () => true,
+          () => false,
+        );
+        if (present) {
+          manager = m;
+          break;
+        }
+      }
+      if (!manager) throw new NoPackageManagerError(LINUX_PACKAGE_MANAGERS.map((m) => m.bin));
+      const r = await exec('sudo', ['-n', ...manager.installArgs]);
+      if (r.code !== 0) {
+        throw new Error(`${manager.bin} install git failed (code ${r.code}): ${r.stderr.trim()}`);
+      }
     },
   };
 }
@@ -118,7 +151,13 @@ export async function provisionGitUnix(opts: ProvisionGitUnixOptions): Promise<P
   try {
     await installLinuxGit();
   } catch (err) {
-    emit(Status.Failed, provisionMessages.gitInstallFailed, 'error', ErrorCode.ExecFailed);
+    // Distinguish "this distro's package manager isn't supported" from an install/permission
+    // failure — the generic copy implies a sudo problem, which misleads a Fedora/Arch user.
+    const message =
+      err instanceof NoPackageManagerError
+        ? provisionMessages.gitInstallNoPackageManager
+        : provisionMessages.gitInstallFailed;
+    emit(Status.Failed, message, 'error', ErrorCode.ExecFailed);
     throw err;
   }
   emit(Status.Done, provisionMessages.gitInstalled);

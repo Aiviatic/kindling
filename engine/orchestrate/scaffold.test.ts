@@ -103,6 +103,26 @@ describe('scaffold', () => {
     expect(await hasHeadCommit(projectDir)).toBe(true);
   });
 
+  it('falls back to plain init + symbolic-ref on old git (< 2.28, no `init -b`) and still lands on main', async () => {
+    // A wrapper that mimics git < 2.28 — `init -b` is an unknown switch — and delegates
+    // everything else to the real git, so the fallback path actually executes.
+    const oldGit = join(tmp, 'old-git');
+    await writeFile(
+      oldGit,
+      '#!/bin/sh\nfor a in "$@"; do\n  if [ "$a" = "-b" ]; then echo "error: unknown switch \\`b\'" >&2; exit 129; fi\ndone\nexec git "$@"\n',
+      { mode: 0o755 },
+    );
+    const emitter = new EngineEmitter();
+    const projectDir = join(tmp, 'old-git-project');
+
+    const outcome = await scaffold({ projectDir, projectName: 'old-git-project', emitter, git: oldGit });
+
+    expect(outcome).toBe('created');
+    expect(await hasHeadCommit(projectDir)).toBe(true);
+    const branch = await exec('git', ['-C', projectDir, 'symbolic-ref', '--short', 'HEAD']);
+    expect(branch.stdout.trim()).toBe('main'); // the fallback produced the same end state
+  });
+
   it('emits a terminal failed event (no dangling working) when git is unavailable', async () => {
     const emitter = new EngineEmitter();
     const events = collect(emitter);

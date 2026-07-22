@@ -46,6 +46,11 @@ export const scaffoldMessages = {
 export const provisionMessages = {
   nodePresent: 'Node is already installed, reusing it.',
   nodeQueued: 'Node needs setting up: the engine your project runs on.',
+  // The engine can't (re)install Node — it is RUNNING on Node (the bootstrap provisions it before
+  // launch). So this failure must send the user back to the install line, not to a Retry that
+  // can only re-probe and fail identically.
+  nodeUnusable:
+    'Node isn’t set up right on this computer. Close this window and run the install line from the website again — that reinstalls it. Retry here can’t.',
   gitPresent: 'Git is already installed, reusing it.',
   gitQueued: 'Git needs setting up: it keeps the history of your project.',
   gitInstalled: 'Git is set up.',
@@ -59,7 +64,9 @@ export const provisionMessages = {
   xcodeInstallFailed:
     'We couldn’t start the developer-tools install. Make sure you’re connected, then press Retry.',
   gitInstallFailed:
-    'Setting up Git ran into a problem, it may need permission to install. Check the details, then press Retry.',
+    'Setting up Git ran into a problem, it may need an administrator (sudo) password to install. Check the details, then press Retry.',
+  gitInstallNoPackageManager:
+    'We couldn’t find this system’s app installer (we support apt, dnf, pacman, and zypper). Install Git with your usual method, then press Retry.',
 } as const;
 
 // Post-install self-check step copy.
@@ -147,8 +154,11 @@ export const recoveryGuidance: Record<ErrorCode, RecoveryGuidance> = {
   },
   [ErrorCode.SmartScreenBlocked]: {
     title: 'Windows asked you to confirm.',
+    // Covers BOTH consent dialogs a Mark-of-the-Web exe can raise: SmartScreen ("More info" →
+    // "Run anyway") and the older Open File – Security Warning ("Run") — a declined either way
+    // reports the same "canceled by the user" error.
     detail:
-      'SmartScreen or your antivirus paused the script, this is expected and safe. Choose “More info”, then “Run anyway”, and press Retry. Nothing was changed on your computer.',
+      'SmartScreen or your antivirus paused the script, this is expected and safe. Choose “More info” then “Run anyway” (or just “Run” on the security warning), and press Retry. Nothing was changed on your computer.',
     recovery: 'retry',
   },
   [ErrorCode.ProjectConflict]: {

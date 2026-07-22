@@ -92,7 +92,14 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldOutcome> 
 }
 
 async function initRepo(git: string, opts: ScaffoldOptions): Promise<void> {
-  await run(git, ['-C', opts.projectDir, 'init', '-b', 'main']);
+  try {
+    await run(git, ['-C', opts.projectDir, 'init', '-b', 'main']);
+  } catch {
+    // `init -b` needs git ≥ 2.28 (2020). An older distro git (e.g. apt on an EOL Debian) still
+    // works: plain init, then point HEAD at main before the first commit — same end state.
+    await run(git, ['-C', opts.projectDir, 'init']);
+    await run(git, ['-C', opts.projectDir, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
+  }
   await writeFile(
     join(opts.projectDir, MARKER),
     JSON.stringify({ scaffoldedBy: 'kindling', project: opts.projectName }, null, 2) + '\n',

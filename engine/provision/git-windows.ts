@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { exec as defaultExec, type ExecResult } from '../exec';
 import type { EngineEmitter } from '../emitter';
 import { Phase, StepId, Status, ErrorCode, type Level } from '../contract';
-import { provisionMessages } from '../messages';
+import { provisionMessages, errorMessages } from '../messages';
 
 // Pinned portable Git for Windows. Unlike MinGit (the old, minimal build), PortableGit includes
 // Git Bash (bin\bash.exe) — which Claude Code (desktop AND CLI) require on Windows. Bump the version
@@ -50,6 +50,22 @@ try {
   [Console]::Error.WriteLine($_.Exception.Message)
   exit 1
 }`;
+
+/**
+ * Classify a Windows provisioning failure from its output so the SPECIFIC, already-written
+ * guidance (messages.ts errorMessages) is shown instead of a generic ExecFailed: an
+ * execution-policy block ("running scripts is disabled…") and a SmartScreen/AV block (unsigned
+ * self-extractor flagged) each have actionable copy. Everything else stays ExecFailed.
+ */
+export function classifyWindowsProvisionError(detail: string): ErrorCode {
+  if (/execution policy|running scripts is disabled|about_Execution_Policies|PSSecurityException/i.test(detail)) {
+    return ErrorCode.ExecPolicyBlocked;
+  }
+  if (/smartscreen|contains a virus|potentially unwanted|blocked by your|operation was canceled by the user/i.test(detail)) {
+    return ErrorCode.SmartScreenBlocked;
+  }
+  return ErrorCode.ExecFailed;
+}
 
 // Run the provisioner via Windows PowerShell, passing the script as -EncodedCommand (base64 of the
 // UTF-16LE source) so there's no quoting/escaping to get wrong and nothing to ship as a separate file.
@@ -108,13 +124,15 @@ export async function provisionGitWindows(opts: ProvisionGitWindowsOptions): Pro
     return { ok: false };
   }
   if (result.code !== 0) {
-    const detail = (result.stderr.trim() || result.stdout.trim()).slice(-400).trim();
-    emit(
-      Status.Failed,
-      detail ? `${provisionMessages.gitInstallFailed}\n\n${detail}` : provisionMessages.gitInstallFailed,
-      'error',
-      ErrorCode.ExecFailed,
-    );
+    const fullOutput = result.stderr.trim() || result.stdout.trim();
+    const detail = fullOutput.slice(-400).trim();
+    // Blocked-by-Windows failures get their specific "expected, safe, reversible" copy; anything
+    // else keeps the generic Git-install message. Classify on the FULL output (a verbose error
+    // could push the keyword outside the display tail); truncate only what's shown.
+    const errorCode = classifyWindowsProvisionError(fullOutput);
+    const lead =
+      errorCode === ErrorCode.ExecFailed ? provisionMessages.gitInstallFailed : errorMessages[errorCode];
+    emit(Status.Failed, detail ? `${lead}\n\n${detail}` : lead, 'error', errorCode);
     return { ok: false };
   }
   const match = /KINDLING_GIT_CMD=(.+)/.exec(result.stdout);

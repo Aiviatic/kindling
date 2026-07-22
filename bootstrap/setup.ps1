@@ -95,9 +95,17 @@ if (Test-NodeOk $NodeFloorMajor) {
 function Add-UserPath([string]$dir) {
   if (-not $dir -or -not (Test-Path $dir)) { return }
   $cur = [Environment]::GetEnvironmentVariable('Path', 'User')
-  $parts = @(($cur -split ';') | Where-Object { $_ -ne '' })
-  if ($parts -notcontains $dir) {
-    [Environment]::SetEnvironmentVariable('Path', ((@($dir) + $parts) -join ';'), 'User')
+  # Keep everything except the dir itself and STALE pinned-Node dirs (the dir name is
+  # version-suffixed, so a pins.node bump would otherwise leave a dead entry behind). Known gap:
+  # pruning only runs while the portable-Node path is taken — a user who later installs a system
+  # Node keeps one stale (harmless, dead-dir) entry. String-prefix match, not -like, so odd
+  # characters in LOCALAPPDATA can't act as wildcards.
+  $parts = @(($cur -split ';') | Where-Object {
+    $_ -ne '' -and $_ -ne $dir -and -not $_.StartsWith("$nodeRoot\", [StringComparison]::OrdinalIgnoreCase)
+  })
+  $new = (@($dir) + $parts) -join ';'
+  if ($new -ne $cur) {
+    [Environment]::SetEnvironmentVariable('Path', $new, 'User')
   }
 }
 if ($NodeExe) { Add-UserPath (Split-Path $NodeExe) }

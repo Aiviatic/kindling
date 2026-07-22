@@ -74,6 +74,13 @@ function makeDefaults(exec: (cmd: string, args: string[]) => Promise<ExecResult>
  * launch step (2.6) never depends on a mutated PATH (the clean-runtime rule). A system Node ≥
  * floor is reused (Skipped, AC2). Emits provision.node events; Failed + rethrow on error.
  *
+ * NOT WIRED INTO THE ENGINE (intentional): by the time the engine runs, kindling is already
+ * running ON Node — the bootstrap (setup.sh) provisions it before launch; the engine's
+ * ProvisionNode step only verifies. Kept as public API. If this is ever wired into a flow that
+ * outlives the process, it must ALSO persist the shell-profile loader the way setup.sh does
+ * (its "Added by Kindling" block) — an nvm install alone leaves nothing on the PATH of future
+ * terminals (the 0.2.5 macOS bug).
+ *
  * The real nvm install + same-shell source is validated at the dress rehearsal; here the shell
  * effects are injectable and the orchestration/events/skip/fail paths are unit-tested.
  */

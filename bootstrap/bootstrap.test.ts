@@ -60,12 +60,26 @@ describe('bootstrap/setup.sh (macOS/Linux entry — AC1)', () => {
     // in the profile must not suppress the append (it would leave a broken loader winning).
     expect(setupSh).toMatch(/grep -q 'Added by Kindling' "\$PROFILE_FILE"/);
     expect(setupSh).toContain('# Added by Kindling');
+    // Bare-home Linux: chains ~/.profile → .bashrc (as /etc/skel does) so LOGIN shells (ssh,
+    // console) get the loader too — .bashrc alone only covers GUI (interactive non-login) shells.
+    expect(setupSh).toMatch(/\[ ! -f "\$HOME\/\.profile" \] && \[ ! -f "\$HOME\/\.bash_profile" \]/);
+    expect(setupSh).toMatch(/login shells read this file, not \.bashrc/);
     // The loader must run BEFORE the nvm-already-installed short-circuit, so a re-run after a
     // profile-less first install still repairs the profile (nvm.sh exists → installer is skipped).
     const profileIdx = setupSh.indexOf('touch "$PROFILE_FILE"');
     const nvmSkipIdx = setupSh.indexOf('if [ ! -s "$NVM_DIR/nvm.sh" ]');
     expect(profileIdx).toBeGreaterThan(0);
     expect(profileIdx).toBeLessThan(nvmSkipIdx);
+  });
+
+  it('covers the fringe shells honestly: fish gets a direct PATH entry, Alpine gets a warning', () => {
+    // fish never reads the POSIX profile and nvm has no fish support — the pinned Node's bin dir
+    // goes straight into config.fish (best-effort, marker-guarded).
+    expect(setupSh).toMatch(/config\.fish/);
+    expect(setupSh).toMatch(/set -gx PATH/);
+    // Alpine/musl has no prebuilt Node — warn up front rather than let a source-compile failure
+    // masquerade as a network problem.
+    expect(setupSh).toMatch(/\/etc\/alpine-release/);
   });
 
   it('does NOT provision Git — that moved to the engine/browser (Option C)', () => {
@@ -88,6 +102,18 @@ describe('bootstrap/setup.ps1 (Windows — AC3 guidance)', () => {
     // Parity guard: the PS npx-cli layout must match the TS composer's npxCliPath (no drift).
     const tail = npxCliPath('X/node.exe').split(/[\\/]/).slice(1).join('\\'); // node_modules\npm\bin\npx-cli.js
     expect(setupPs1).toContain(tail);
+  });
+
+  it('persists the portable Node dir to the USER-scope PATH (regression guard for the macOS bug family)', () => {
+    // "Installs fine but PATH never persisted" is exactly what bit macOS — pin the Windows
+    // mechanism: Add-UserPath must exist, write user-scope via SetEnvironmentVariable (never
+    // setx, which truncates at 1024 chars), prune stale version-suffixed Node dirs, and be
+    // CALLED with the provisioned Node dir.
+    expect(setupPs1).toMatch(/function Add-UserPath/);
+    expect(setupPs1).toMatch(/SetEnvironmentVariable\('Path', \$new, 'User'\)/);
+    expect(setupPs1).not.toMatch(/\bsetx\b/i);
+    expect(setupPs1).toMatch(/StartsWith\("\$nodeRoot\\"/); // stale pinned-Node dirs pruned
+    expect(setupPs1).toMatch(/if \(\$NodeExe\) \{ Add-UserPath \(Split-Path \$NodeExe\) \}/);
   });
 
   it('is self-contained for the `irm | iex` delivery — helpers inlined, no on-disk dot-source', () => {

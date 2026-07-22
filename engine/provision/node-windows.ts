@@ -54,6 +54,14 @@ export interface ProvisionResult {
   nodeExe: string | null;
 }
 
+/**
+ * NOT WIRED INTO THE ENGINE (intentional): by the time the engine runs, kindling is already
+ * running ON Node — the bootstrap (setup.ps1) provisions portable Node before launch; the
+ * engine's ProvisionNode step only verifies. Kept as public API. If this is ever wired into a
+ * flow that outlives the process, it must ALSO persist the Node dir to the USER-scope PATH the
+ * way setup.ps1's Add-UserPath does — this function alone leaves nothing on the PATH of future
+ * terminals (the same family as the 0.2.5 macOS bug).
+ */
 export async function provisionNodeWindows(opts: ProvisionNodeWindowsOptions): Promise<ProvisionResult> {
   const arch = opts.arch ?? 'x64';
   const exec = opts.exec ?? defaultExec;

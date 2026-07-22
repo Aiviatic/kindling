@@ -108,7 +108,9 @@ export class Engine implements EngineCommands<EngineRunResult> {
             this.emit(StepId.ProvisionNode, Status.Skipped, provisionMessages.nodePresent);
             return true;
           }
-          this.emit(StepId.ProvisionNode, Status.Failed, provisionMessages.nodeQueued, 'error', ErrorCode.ExecFailed);
+          // Actionable dead-end copy: the engine cannot provision Node (it RUNS on Node), so
+          // Retry can only re-probe — point the user at re-running the install line instead.
+          this.emit(StepId.ProvisionNode, Status.Failed, provisionMessages.nodeUnusable, 'error', ErrorCode.ExecFailed);
           return false;
         },
       },

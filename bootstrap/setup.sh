@@ -76,6 +76,16 @@ else
       exit 1
     fi
   fi
+  # Bare-home Linux: the loader went into .bashrc, but LOGIN shells (ssh, console) read
+  # ~/.profile / ~/.bash_profile — with neither present, they'd never source .bashrc and node/npm
+  # would be missing over ssh. Chain them the way Debian's /etc/skel does. (Darwin bash never
+  # lands here: its fresh-file fallback is .bash_profile.)
+  if [ "$PROFILE_FILE" = "$HOME/.bashrc" ] && [ ! -f "$HOME/.profile" ] && [ ! -f "$HOME/.bash_profile" ]; then
+    if ! printf '# Added by Kindling — login shells read this file, not .bashrc; chain to it (as /etc/skel does)\nif [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi\n' > "$HOME/.profile"; then
+      say "Couldn't write to $HOME/.profile. Check the file's permissions, then run the line again."
+      exit 1
+    fi
+  fi
   if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     if ! curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | bash; then
       say "Couldn't install nvm. Check your internet connection, then run the line again. It's safe to re-run."
@@ -93,11 +103,32 @@ else
     say "Couldn't load nvm after installing it. Run the line again — it's safe to re-run."
     exit 1
   fi
+  # Alpine/musl: nodejs.org has no prebuilt musl binaries, so nvm may fall back to compiling from
+  # source (slow; fails without a toolchain). Warn honestly up front instead of letting a
+  # compiler error surface later as a mysterious "check your connection".
+  if [ -f /etc/alpine-release ]; then
+    say "Heads up: this looks like Alpine Linux. Node doesn't ship prebuilt for it, so this step may try to build from source — that can take a long time or fail. If it fails, use a mainstream distro (Ubuntu, Fedora) instead."
+  fi
   if ! nvm install "$KINDLING_NODE_VERSION"; then
     say "Couldn't set up Node. Check your internet connection, then run the line again."
     exit 1
   fi
   NODE_PROVISIONED_THIS_RUN=1
+  # fish users: nvm has no fish support, and the POSIX loader above never runs in fish — put the
+  # pinned Node's bin dir on fish's PATH directly (best-effort; never fails the install).
+  case "${SHELL:-}" in
+    */fish)
+      FISH_CONFIG="$HOME/.config/fish/config.fish"
+      NODE_BIN_DIR="$NVM_DIR/versions/node/v$KINDLING_NODE_VERSION/bin"
+      mkdir -p "$HOME/.config/fish" 2>/dev/null || true
+      if ! grep -Fqs "$NODE_BIN_DIR" "$FISH_CONFIG"; then
+        {
+          printf '\n# Added by Kindling (kindling.aiviatic.com) — nvm has no fish support; add Node directly\n'
+          printf 'if test -d "%s"\n    set -gx PATH "%s" $PATH\nend\n' "$NODE_BIN_DIR" "$NODE_BIN_DIR"
+        } >> "$FISH_CONFIG" 2>/dev/null || say "Couldn't write $FISH_CONFIG — add $NODE_BIN_DIR to fish's PATH yourself."
+      fi
+      ;;
+  esac
 fi
 
 # --- Git is provisioned by the ENGINE (in the browser), not here -------------
