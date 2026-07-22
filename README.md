@@ -39,17 +39,21 @@ Three layers, so the scary parts happen where they can be explained:
 
 1. **A per-OS bootstrap script** (`bootstrap/`) gets the prerequisites in place.
    It provisions a pinned Node.js (via `nvm` on macOS/Linux; on Windows it downloads
-   a pinned, SHA-256-verified portable Node, or reuses an existing Node 20+). On
-   Windows it also provisions a pinned, SHA-256-verified portable Git (MinGit) if
-   Git is missing. It then launches Kindling in the same shell.
+   a pinned, SHA-256-verified portable Node), or reuses an existing Node 20+ — and it
+   makes sure the tools stay available afterward: the shell-profile loader is written
+   on macOS/Linux (created if the profile doesn't exist yet, as on a brand-new Mac)
+   and the user-scope PATH is set on Windows, so `node`/`npm` and any agent CLIs
+   keep working in every new terminal. It then launches Kindling in the same shell.
    - macOS/Linux: `curl -fsSL https://kindling.aiviatic.com/install | bash`
    - Windows: download `kindling.cmd` and double-click it (it fetches and runs
      `setup.ps1` over HTTPS).
 2. **A temporary localhost server** (`server/`) stands up on `127.0.0.1`, serves a
-   friendly browser UI, provisions Git where the bootstrap hasn't already, scaffolds
-   the project, installs your chosen framework (BMad by default, via
-   `npx bmad-method install`), and installs any agent CLIs you opt into. It exits when
-   the install completes.
+   friendly browser UI, provisions Git after you click Start (the Xcode
+   Command Line Tools dialog on macOS; the distro's package manager — apt, dnf,
+   pacman, or zypper — on Linux; a pinned, SHA-256-verified PortableGit including
+   the Git Bash that Claude Code needs on Windows), scaffolds the project, installs
+   your chosen framework (BMad by default, via `npx bmad-method install`), and
+   installs any agent CLIs you opt into. It exits when the install completes.
 3. **A browser UI** (`ui/`) walks you through the few choices: project folder and
    name, tools, and framework. Progress is grouped into system setup and project
    setup, and it keeps moving even through the ~5-minute macOS developer-tools
