@@ -103,7 +103,11 @@ describe('scaffold', () => {
     expect(await hasHeadCommit(projectDir)).toBe(true);
   });
 
-  it('falls back to plain init + symbolic-ref on old git (< 2.28, no `init -b`) and still lands on main', async () => {
+  // POSIX-only: the fake-old-git wrapper is a `#!/bin/sh` script, which Windows can't spawn
+  // (ENOENT). The fallback itself is platform-independent TS, exercised on the macOS/Ubuntu CI legs.
+  it.skipIf(process.platform === 'win32')(
+    'falls back to plain init + symbolic-ref on old git (< 2.28, no `init -b`) and still lands on main',
+    async () => {
     // A wrapper that mimics git < 2.28 — `init -b` is an unknown switch — and delegates
     // everything else to the real git, so the fallback path actually executes.
     const oldGit = join(tmp, 'old-git');
@@ -121,7 +125,8 @@ describe('scaffold', () => {
     expect(await hasHeadCommit(projectDir)).toBe(true);
     const branch = await exec('git', ['-C', projectDir, 'symbolic-ref', '--short', 'HEAD']);
     expect(branch.stdout.trim()).toBe('main'); // the fallback produced the same end state
-  });
+    },
+  );
 
   it('emits a terminal failed event (no dangling working) when git is unavailable', async () => {
     const emitter = new EngineEmitter();
